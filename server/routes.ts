@@ -5,7 +5,8 @@ import { setupAuth } from "./auth";
 import { 
   insertMenuItemSchema, 
   insertOrderSchema, 
-  insertOrderItemSchema, 
+  insertOrderItemSchema,
+  insertCanteenSchema,
   OrderWithItems 
 } from "@shared/schema";
 import { z } from "zod";
@@ -15,6 +16,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
   // ======== User API Routes ========
+  
+  // Get all canteens
+  app.get("/api/canteens", async (req, res, next) => {
+    try {
+      const canteens = await storage.getAllCanteens();
+      res.json(canteens);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  // Get specific canteen
+  app.get("/api/canteens/:id", async (req, res, next) => {
+    try {
+      const canteenId = parseInt(req.params.id);
+      const canteen = await storage.getCanteen(canteenId);
+      
+      if (!canteen) {
+        return res.status(404).json({ message: "Canteen not found" });
+      }
+      
+      res.json(canteen);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  // Get menu items for a specific canteen
+  app.get("/api/canteens/:id/menu-items", async (req, res, next) => {
+    try {
+      const canteenId = parseInt(req.params.id);
+      const canteen = await storage.getCanteen(canteenId);
+      
+      if (!canteen) {
+        return res.status(404).json({ message: "Canteen not found" });
+      }
+      
+      const menuItems = await storage.getMenuItemsByCanteen(canteenId);
+      res.json(menuItems);
+    } catch (err) {
+      next(err);
+    }
+  });
   
   // Get menu items
   app.get("/api/menu-items", async (req, res, next) => {
@@ -175,6 +219,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     next();
   };
+  
+  // Get all canteens (admin)
+  app.get("/api/admin/canteens", isAdmin, async (req, res, next) => {
+    try {
+      const canteens = await storage.getAllCanteens();
+      res.json(canteens);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  // Create canteen (admin)
+  app.post("/api/admin/canteens", isAdmin, async (req, res, next) => {
+    try {
+      const canteenData = insertCanteenSchema.parse(req.body);
+      const canteen = await storage.createCanteen(canteenData);
+      res.status(201).json(canteen);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  // Update canteen (admin)
+  app.patch("/api/admin/canteens/:id", isAdmin, async (req, res, next) => {
+    try {
+      const canteenId = parseInt(req.params.id);
+      const canteen = await storage.getCanteen(canteenId);
+      
+      if (!canteen) {
+        return res.status(404).json({ message: "Canteen not found" });
+      }
+      
+      const updatedData = req.body;
+      const updatedCanteen = await storage.updateCanteen(canteenId, updatedData);
+      res.json(updatedCanteen);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  // Delete canteen (admin)
+  app.delete("/api/admin/canteens/:id", isAdmin, async (req, res, next) => {
+    try {
+      const canteenId = parseInt(req.params.id);
+      const canteen = await storage.getCanteen(canteenId);
+      
+      if (!canteen) {
+        return res.status(404).json({ message: "Canteen not found" });
+      }
+      
+      await storage.deleteCanteen(canteenId);
+      res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
+  });
 
   // Get all menu items (admin)
   app.get("/api/admin/menu-items", isAdmin, async (req, res, next) => {
