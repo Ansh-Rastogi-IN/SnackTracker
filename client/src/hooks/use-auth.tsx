@@ -19,6 +19,7 @@ type AuthContextType = {
   registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
   switchToAdmin: () => void;
   switchToUser: () => void;
+  hasRole: (role: string | string[]) => boolean;
 };
 
 type LoginData = Pick<InsertUser, "username" | "password">;
@@ -117,6 +118,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsAdmin(false);
     setLocation("/menu");
   };
+  
+  // Function to check if user has a specific role or any of the roles provided in an array
+  const hasRole = (role: string | string[]): boolean => {
+    if (!user) return false;
+    
+    // Always grant access to admin users
+    if (user.isAdmin || user.role === 'admin') return true;
+    
+    if (Array.isArray(role)) {
+      return role.includes(user.role);
+    }
+    
+    return user.role === role;
+  };
 
   return (
     <AuthContext.Provider
@@ -130,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         registerMutation,
         switchToAdmin,
         switchToUser,
+        hasRole,
       }}
     >
       {children}
