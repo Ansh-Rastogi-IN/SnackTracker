@@ -12,6 +12,7 @@ import AdminOrdersPage from "@/pages/admin-orders-page";
 import AdminMenuPage from "@/pages/admin-menu-page";
 import StaffOrdersPage from "@/pages/staff-orders-page";
 import StaffInventoryPage from "@/pages/staff-inventory-page";
+import StaffMenuPage from "@/pages/staff-menu-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 
@@ -33,7 +34,7 @@ function Router() {
       {/* Staff routes */}
       <ProtectedRoute path="/staff/orders" component={StaffOrdersPage} roles={["staff"]} />
       <ProtectedRoute path="/staff/inventory" component={StaffInventoryPage} roles={["staff"]} />
-      <ProtectedRoute path="/staff/menu" component={() => <h1>Staff Menu Management</h1>} roles={["staff"]} />
+      <ProtectedRoute path="/staff/menu" component={StaffMenuPage} roles={["staff"]} />
       <ProtectedRoute path="/staff/expenses" component={() => <h1>Staff Expense Tracking</h1>} roles={["staff"]} />
       <ProtectedRoute path="/staff/sales" component={() => <h1>Staff Sales Reporting</h1>} roles={["staff"]} />
       
