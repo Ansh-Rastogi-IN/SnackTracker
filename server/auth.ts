@@ -28,6 +28,29 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
+// Middleware for role-based access control
+export function requireRole(role: string) {
+  return (req: Express.Request, res: Express.Response, next: Express.NextFunction) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+    
+    if (req.user.role !== role && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    
+    next();
+  };
+}
+
+// Middleware to check if the user is authenticated
+export function isAuthenticated(req: Express.Request, res: Express.Response, next: Express.NextFunction) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ message: "Authentication required" });
+}
+
 export function setupAuth(app: Express) {
   const sessionSecret = process.env.SESSION_SECRET || "snacktrack-secret-key";
   

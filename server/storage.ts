@@ -208,10 +208,35 @@ export class MemStorage implements IStorage {
       ...userData,
       firstName: userData.firstName || null,
       lastName: userData.lastName || null,
-      isAdmin: userData.isAdmin || false 
+      role: userData.role || "customer",
+      isAdmin: userData.isAdmin || false,
+      canteenId: userData.canteenId || null,
+      profileImage: userData.profileImage || null,
+      contactNumber: userData.contactNumber || null
     };
     this.users.set(id, user);
     return user;
+  }
+  
+  async updateUser(id: number, data: Partial<InsertUser>): Promise<User> {
+    const user = this.users.get(id);
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    const updatedUser: User = { ...user, ...data };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+  
+  async getUsersByRole(role: string): Promise<User[]> {
+    return Array.from(this.users.values())
+      .filter(user => user.role === role);
+  }
+  
+  async getUsersByCanteen(canteenId: number): Promise<User[]> {
+    return Array.from(this.users.values())
+      .filter(user => user.canteenId === canteenId);
   }
   
   // ======== Canteen Methods ========
@@ -349,6 +374,16 @@ export class MemStorage implements IStorage {
     return Promise.all(activeOrders.map(order => this.getOrderWithItems(order.id)))
       .then(orders => orders.filter(Boolean) as OrderWithItems[]);
   }
+  
+  async getActiveOrdersByCanteen(canteenId: number): Promise<OrderWithItems[]> {
+    // First get all active orders
+    const allActiveOrders = await this.getActiveOrders();
+    
+    // Filter orders for menu items belonging to this canteen
+    return allActiveOrders.filter(order => {
+      return order.items.some(item => item.menuItem.canteenId === canteenId);
+    });
+  }
 
   async getOrderHistory(): Promise<OrderWithItems[]> {
     // Get all completed orders (for admin)
@@ -358,6 +393,16 @@ export class MemStorage implements IStorage {
 
     return Promise.all(completedOrders.map(order => this.getOrderWithItems(order.id)))
       .then(orders => orders.filter(Boolean) as OrderWithItems[]);
+  }
+  
+  async getOrderHistoryByCanteen(canteenId: number): Promise<OrderWithItems[]> {
+    // First get all completed orders
+    const allCompletedOrders = await this.getOrderHistory();
+    
+    // Filter orders for menu items belonging to this canteen
+    return allCompletedOrders.filter(order => {
+      return order.items.some(item => item.menuItem.canteenId === canteenId);
+    });
   }
 
   async createOrder(orderData: InsertOrder): Promise<Order> {
@@ -402,6 +447,138 @@ export class MemStorage implements IStorage {
     const orderItem: OrderItem = { id, ...orderItemData };
     this.orderItems.set(id, orderItem);
     return orderItem;
+  }
+  
+  // ======== Inventory Methods ========
+  
+  async getAllInventoryItems(): Promise<InventoryItem[]> {
+    return Array.from(this.inventoryItems.values());
+  }
+  
+  async getInventoryItemsByCanteen(canteenId: number): Promise<InventoryItem[]> {
+    return Array.from(this.inventoryItems.values())
+      .filter(item => item.canteenId === canteenId);
+  }
+  
+  async getInventoryItem(id: number): Promise<InventoryItem | undefined> {
+    return this.inventoryItems.get(id);
+  }
+  
+  async createInventoryItem(itemData: InsertInventoryItem): Promise<InventoryItem> {
+    const id = this.inventoryIdCounter++;
+    const lastUpdated = new Date();
+    const item: InventoryItem = {
+      id,
+      ...itemData,
+      lastUpdated
+    };
+    this.inventoryItems.set(id, item);
+    return item;
+  }
+  
+  async updateInventoryItem(id: number, data: Partial<InsertInventoryItem>): Promise<InventoryItem> {
+    const item = this.inventoryItems.get(id);
+    if (!item) {
+      throw new Error("Inventory item not found");
+    }
+    
+    const lastUpdated = new Date();
+    const updatedItem: InventoryItem = { ...item, ...data, lastUpdated };
+    this.inventoryItems.set(id, updatedItem);
+    return updatedItem;
+  }
+  
+  async deleteInventoryItem(id: number): Promise<void> {
+    this.inventoryItems.delete(id);
+  }
+  
+  async getLowStockItems(canteenId: number): Promise<InventoryItem[]> {
+    return Array.from(this.inventoryItems.values())
+      .filter(item => item.canteenId === canteenId && item.quantity <= item.reorderLevel);
+  }
+  
+  // ======== Expense Methods ========
+  
+  async getAllExpenses(): Promise<Expense[]> {
+    return Array.from(this.expenses.values());
+  }
+  
+  async getExpensesByCanteen(canteenId: number): Promise<Expense[]> {
+    return Array.from(this.expenses.values())
+      .filter(expense => expense.canteenId === canteenId);
+  }
+  
+  async getExpense(id: number): Promise<Expense | undefined> {
+    return this.expenses.get(id);
+  }
+  
+  async createExpense(expenseData: InsertExpense): Promise<Expense> {
+    const id = this.expenseIdCounter++;
+    const date = expenseData.date || new Date();
+    const expense: Expense = {
+      id,
+      ...expenseData,
+      date
+    };
+    this.expenses.set(id, expense);
+    return expense;
+  }
+  
+  async updateExpense(id: number, data: Partial<InsertExpense>): Promise<Expense> {
+    const expense = this.expenses.get(id);
+    if (!expense) {
+      throw new Error("Expense not found");
+    }
+    
+    const updatedExpense: Expense = { ...expense, ...data };
+    this.expenses.set(id, updatedExpense);
+    return updatedExpense;
+  }
+  
+  async deleteExpense(id: number): Promise<void> {
+    this.expenses.delete(id);
+  }
+  
+  // ======== Sales Report Methods ========
+  
+  async getAllSalesReports(): Promise<SalesReport[]> {
+    return Array.from(this.salesReports.values());
+  }
+  
+  async getSalesReportsByCanteen(canteenId: number): Promise<SalesReport[]> {
+    return Array.from(this.salesReports.values())
+      .filter(report => report.canteenId === canteenId);
+  }
+  
+  async getSalesReport(id: number): Promise<SalesReport | undefined> {
+    return this.salesReports.get(id);
+  }
+  
+  async createSalesReport(reportData: InsertSalesReport): Promise<SalesReport> {
+    const id = this.salesReportIdCounter++;
+    const date = reportData.date || new Date();
+    const report: SalesReport = {
+      id,
+      ...reportData,
+      date
+    };
+    this.salesReports.set(id, report);
+    return report;
+  }
+  
+  async updateSalesReport(id: number, data: Partial<InsertSalesReport>): Promise<SalesReport> {
+    const report = this.salesReports.get(id);
+    if (!report) {
+      throw new Error("Sales report not found");
+    }
+    
+    const updatedReport: SalesReport = { ...report, ...data };
+    this.salesReports.set(id, updatedReport);
+    return updatedReport;
+  }
+  
+  async deleteSalesReport(id: number): Promise<void> {
+    this.salesReports.delete(id);
   }
   
   // ======== Initialization Methods ========

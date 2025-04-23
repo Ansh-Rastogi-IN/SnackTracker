@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth } from "./auth";
+import { setupAuth, requireRole, isAuthenticated } from "./auth";
 import { 
   insertMenuItemSchema, 
   insertOrderSchema, 
@@ -369,6 +369,306 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updatedOrder = await storage.updateOrderStatus(orderId, status);
       res.json(updatedOrder);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // ======== Staff API Routes ========
+  
+  // Get staff profile info
+  app.get("/api/staff/profile", requireRole("staff"), async (req, res, next) => {
+    try {
+      const staffId = req.user.id;
+      const staff = await storage.getUser(staffId);
+      
+      if (!staff) {
+        return res.status(404).json({ message: "Staff not found" });
+      }
+      
+      // Don't include password
+      const { password, ...safeStaff } = staff;
+      res.json(safeStaff);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  // Get canteen for staff
+  app.get("/api/staff/canteen", requireRole("staff"), async (req, res, next) => {
+    try {
+      const canteenId = req.user.canteenId;
+      if (!canteenId) {
+        return res.status(400).json({ message: "Staff not assigned to a canteen" });
+      }
+      
+      const canteen = await storage.getCanteen(canteenId);
+      if (!canteen) {
+        return res.status(404).json({ message: "Canteen not found" });
+      }
+      
+      res.json(canteen);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  // Get menu items for staff's canteen
+  app.get("/api/staff/menu-items", requireRole("staff"), async (req, res, next) => {
+    try {
+      const canteenId = req.user.canteenId;
+      if (!canteenId) {
+        return res.status(400).json({ message: "Staff not assigned to a canteen" });
+      }
+      
+      const menuItems = await storage.getMenuItemsByCanteen(canteenId);
+      res.json(menuItems);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  // Create menu item for staff's canteen
+  app.post("/api/staff/menu-items", requireRole("staff"), async (req, res, next) => {
+    try {
+      const canteenId = req.user.canteenId;
+      if (!canteenId) {
+        return res.status(400).json({ message: "Staff not assigned to a canteen" });
+      }
+      
+      const menuItemData = insertMenuItemSchema.parse({
+        ...req.body,
+        canteenId
+      });
+      
+      const menuItem = await storage.createMenuItem(menuItemData);
+      res.status(201).json(menuItem);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  // Get active orders for staff's canteen
+  app.get("/api/staff/orders/active", requireRole("staff"), async (req, res, next) => {
+    try {
+      const canteenId = req.user.canteenId;
+      if (!canteenId) {
+        return res.status(400).json({ message: "Staff not assigned to a canteen" });
+      }
+      
+      const orders = await storage.getActiveOrdersByCanteen(canteenId);
+      res.json(orders);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  // Get order history for staff's canteen
+  app.get("/api/staff/orders/history", requireRole("staff"), async (req, res, next) => {
+    try {
+      const canteenId = req.user.canteenId;
+      if (!canteenId) {
+        return res.status(400).json({ message: "Staff not assigned to a canteen" });
+      }
+      
+      const orders = await storage.getOrderHistoryByCanteen(canteenId);
+      res.json(orders);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  // Update order status for staff's canteen
+  app.post("/api/staff/orders/:id/status", requireRole("staff"), async (req, res, next) => {
+    try {
+      const orderId = parseInt(req.params.id);
+      const order = await storage.getOrderWithItems(orderId);
+      
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      
+      const canteenId = req.user.canteenId;
+      if (!canteenId) {
+        return res.status(400).json({ message: "Staff not assigned to a canteen" });
+      }
+      
+      // Check if any items in the order are from this canteen
+      const hasCanteenItems = order.items.some(item => 
+        item.menuItem.canteenId === canteenId
+      );
+      
+      if (!hasCanteenItems) {
+        return res.status(403).json({ message: "Cannot update orders for other canteens" });
+      }
+      
+      const { status } = req.body;
+      if (!["received", "preparing", "ready", "completed", "cancelled"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+      
+      const updatedOrder = await storage.updateOrderStatus(orderId, status);
+      res.json(updatedOrder);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  // ======== Inventory Management Routes (Staff) ========
+  
+  // Get inventory items for staff's canteen
+  app.get("/api/staff/inventory", requireRole("staff"), async (req, res, next) => {
+    try {
+      const canteenId = req.user.canteenId;
+      if (!canteenId) {
+        return res.status(400).json({ message: "Staff not assigned to a canteen" });
+      }
+      
+      const inventoryItems = await storage.getInventoryItemsByCanteen(canteenId);
+      res.json(inventoryItems);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  // Get low stock items for staff's canteen
+  app.get("/api/staff/inventory/low", requireRole("staff"), async (req, res, next) => {
+    try {
+      const canteenId = req.user.canteenId;
+      if (!canteenId) {
+        return res.status(400).json({ message: "Staff not assigned to a canteen" });
+      }
+      
+      const lowStockItems = await storage.getLowStockItems(canteenId);
+      res.json(lowStockItems);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  // Add inventory item for staff's canteen
+  app.post("/api/staff/inventory", requireRole("staff"), async (req, res, next) => {
+    try {
+      const canteenId = req.user.canteenId;
+      if (!canteenId) {
+        return res.status(400).json({ message: "Staff not assigned to a canteen" });
+      }
+      
+      const itemData = {
+        ...req.body,
+        canteenId,
+        updatedBy: req.user.id
+      };
+      
+      const inventoryItem = await storage.createInventoryItem(itemData);
+      res.status(201).json(inventoryItem);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  // Update inventory item for staff's canteen
+  app.patch("/api/staff/inventory/:id", requireRole("staff"), async (req, res, next) => {
+    try {
+      const itemId = parseInt(req.params.id);
+      const item = await storage.getInventoryItem(itemId);
+      
+      if (!item) {
+        return res.status(404).json({ message: "Inventory item not found" });
+      }
+      
+      const canteenId = req.user.canteenId;
+      if (!canteenId) {
+        return res.status(400).json({ message: "Staff not assigned to a canteen" });
+      }
+      
+      if (item.canteenId !== canteenId) {
+        return res.status(403).json({ message: "Cannot update inventory for other canteens" });
+      }
+      
+      const updateData = {
+        ...req.body,
+        updatedBy: req.user.id
+      };
+      
+      const updatedItem = await storage.updateInventoryItem(itemId, updateData);
+      res.json(updatedItem);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  // ======== Expense Management Routes (Staff) ========
+  
+  // Get expenses for staff's canteen
+  app.get("/api/staff/expenses", requireRole("staff"), async (req, res, next) => {
+    try {
+      const canteenId = req.user.canteenId;
+      if (!canteenId) {
+        return res.status(400).json({ message: "Staff not assigned to a canteen" });
+      }
+      
+      const expenses = await storage.getExpensesByCanteen(canteenId);
+      res.json(expenses);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  // Add expense for staff's canteen
+  app.post("/api/staff/expenses", requireRole("staff"), async (req, res, next) => {
+    try {
+      const canteenId = req.user.canteenId;
+      if (!canteenId) {
+        return res.status(400).json({ message: "Staff not assigned to a canteen" });
+      }
+      
+      const expenseData = {
+        ...req.body,
+        canteenId,
+        recordedBy: req.user.id
+      };
+      
+      const expense = await storage.createExpense(expenseData);
+      res.status(201).json(expense);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  // ======== Sales Report Routes (Staff) ========
+  
+  // Get sales reports for staff's canteen
+  app.get("/api/staff/sales", requireRole("staff"), async (req, res, next) => {
+    try {
+      const canteenId = req.user.canteenId;
+      if (!canteenId) {
+        return res.status(400).json({ message: "Staff not assigned to a canteen" });
+      }
+      
+      const salesReports = await storage.getSalesReportsByCanteen(canteenId);
+      res.json(salesReports);
+    } catch (err) {
+      next(err);
+    }
+  });
+  
+  // Create sales report for staff's canteen
+  app.post("/api/staff/sales", requireRole("staff"), async (req, res, next) => {
+    try {
+      const canteenId = req.user.canteenId;
+      if (!canteenId) {
+        return res.status(400).json({ message: "Staff not assigned to a canteen" });
+      }
+      
+      const reportData = {
+        ...req.body,
+        canteenId,
+        generatedBy: req.user.id
+      };
+      
+      const salesReport = await storage.createSalesReport(reportData);
+      res.status(201).json(salesReport);
     } catch (err) {
       next(err);
     }
