@@ -1,10 +1,13 @@
 import { 
-  users, 
+  users,
+  canteens,
   menuItems, 
   orders, 
   orderItems, 
   User, 
-  InsertUser, 
+  InsertUser,
+  Canteen,
+  InsertCanteen,
   MenuItem, 
   InsertMenuItem, 
   Order, 
@@ -18,14 +21,25 @@ import createMemoryStore from "memorystore";
 
 const MemoryStore = createMemoryStore(session);
 
+// Type for SessionStore since it's not exported from express-session
+type SessionStore = ReturnType<typeof createMemoryStore>;
+
 export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   
+  // Canteen operations
+  getAllCanteens(): Promise<Canteen[]>;
+  getCanteen(id: number): Promise<Canteen | undefined>;
+  createCanteen(canteen: InsertCanteen): Promise<Canteen>;
+  updateCanteen(id: number, data: Partial<InsertCanteen>): Promise<Canteen>;
+  deleteCanteen(id: number): Promise<void>;
+  
   // Menu item operations
   getAllMenuItems(): Promise<MenuItem[]>;
+  getMenuItemsByCanteen(canteenId: number): Promise<MenuItem[]>;
   getMenuItem(id: number): Promise<MenuItem | undefined>;
   createMenuItem(menuItem: InsertMenuItem): Promise<MenuItem>;
   updateMenuItem(id: number, data: Partial<InsertMenuItem>): Promise<MenuItem>;
@@ -51,12 +65,14 @@ export interface IStorage {
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
+  private canteens: Map<number, Canteen>;
   private menuItems: Map<number, MenuItem>;
   private orders: Map<number, Order>;
   private orderItems: Map<number, OrderItem>;
   
   // Auto incrementing IDs
   private userIdCounter: number;
+  private canteenIdCounter: number;
   private menuItemIdCounter: number;
   private orderIdCounter: number;
   private orderItemIdCounter: number;
@@ -65,11 +81,13 @@ export class MemStorage implements IStorage {
 
   constructor() {
     this.users = new Map();
+    this.canteens = new Map();
     this.menuItems = new Map();
     this.orders = new Map();
     this.orderItems = new Map();
     
     this.userIdCounter = 1;
+    this.canteenIdCounter = 1;
     this.menuItemIdCounter = 1;
     this.orderIdCounter = 1;
     this.orderItemIdCounter = 1;
@@ -85,6 +103,31 @@ export class MemStorage implements IStorage {
       firstName: "Admin",
       lastName: "User",
       isAdmin: true,
+    }).then();
+    
+    // Add the three college canteens
+    this.createCanteen({
+      name: "Main Canteen",
+      location: "Main Building",
+      description: "The main canteen serving a variety of dishes",
+      imageUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      isActive: true,
+    }).then();
+    
+    this.createCanteen({
+      name: "Engineering Block Canteen",
+      location: "Engineering Block",
+      description: "Quick bites and meals for engineering students",
+      imageUrl: "https://images.unsplash.com/photo-1559305616-3f99cd43e353?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      isActive: true,
+    }).then();
+    
+    this.createCanteen({
+      name: "Science Block Café",
+      location: "Science Block",
+      description: "Coffee, snacks and light meals",
+      imageUrl: "https://images.unsplash.com/photo-1521017432531-fbd92d768814?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      isActive: true,
     }).then();
     
     // Add some default menu items
@@ -157,16 +200,64 @@ export class MemStorage implements IStorage {
 
   async createUser(userData: InsertUser): Promise<User> {
     const id = this.userIdCounter++;
-    const createdAt = new Date();
-    const user: User = { id, ...userData };
+    const user: User = { 
+      id, 
+      ...userData,
+      firstName: userData.firstName || null,
+      lastName: userData.lastName || null,
+      isAdmin: userData.isAdmin || false 
+    };
     this.users.set(id, user);
     return user;
+  }
+  
+  // ======== Canteen Methods ========
+  
+  async getAllCanteens(): Promise<Canteen[]> {
+    return Array.from(this.canteens.values());
+  }
+  
+  async getCanteen(id: number): Promise<Canteen | undefined> {
+    return this.canteens.get(id);
+  }
+  
+  async createCanteen(canteenData: InsertCanteen): Promise<Canteen> {
+    const id = this.canteenIdCounter++;
+    const canteen: Canteen = { 
+      id, 
+      ...canteenData,
+      description: canteenData.description || null,
+      imageUrl: canteenData.imageUrl || null,
+      isActive: canteenData.isActive ?? true 
+    };
+    this.canteens.set(id, canteen);
+    return canteen;
+  }
+  
+  async updateCanteen(id: number, data: Partial<InsertCanteen>): Promise<Canteen> {
+    const canteen = this.canteens.get(id);
+    if (!canteen) {
+      throw new Error("Canteen not found");
+    }
+    
+    const updatedCanteen: Canteen = { ...canteen, ...data };
+    this.canteens.set(id, updatedCanteen);
+    return updatedCanteen;
+  }
+  
+  async deleteCanteen(id: number): Promise<void> {
+    this.canteens.delete(id);
   }
 
   // ======== Menu Item Methods ========
   
   async getAllMenuItems(): Promise<MenuItem[]> {
     return Array.from(this.menuItems.values());
+  }
+  
+  async getMenuItemsByCanteen(canteenId: number): Promise<MenuItem[]> {
+    return Array.from(this.menuItems.values())
+      .filter(item => item.canteenId === canteenId);
   }
 
   async getMenuItem(id: number): Promise<MenuItem | undefined> {
@@ -175,7 +266,14 @@ export class MemStorage implements IStorage {
 
   async createMenuItem(menuItemData: InsertMenuItem): Promise<MenuItem> {
     const id = this.menuItemIdCounter++;
-    const menuItem: MenuItem = { id, ...menuItemData };
+    const menuItem: MenuItem = { 
+      id, 
+      ...menuItemData,
+      description: menuItemData.description || null,
+      imageUrl: menuItemData.imageUrl || null,
+      isAvailable: menuItemData.isAvailable ?? true,
+      canteenId: menuItemData.canteenId || 1 // Default to first canteen if not specified
+    };
     this.menuItems.set(id, menuItem);
     return menuItem;
   }
@@ -201,16 +299,19 @@ export class MemStorage implements IStorage {
     return this.orders.get(id);
   }
 
-  async getOrderWithItems(id: number): Promise<OrderWithItems | undefined> {
+  async getOrderWithItems(id: number): Promise<OrderWithItems | null> {
     const order = this.orders.get(id);
-    if (!order) return undefined;
+    if (!order) return null;
 
     const orderItemsList = Array.from(this.orderItems.values())
       .filter(item => item.orderId === id);
 
     const items = await Promise.all(orderItemsList.map(async item => {
       const menuItem = await this.getMenuItem(item.menuItemId);
-      return { ...item, menuItem: menuItem! };
+      if (!menuItem) {
+        throw new Error(`Menu item with id ${item.menuItemId} not found`);
+      }
+      return { ...item, menuItem };
     }));
 
     return { ...order, items };
@@ -262,18 +363,25 @@ export class MemStorage implements IStorage {
     const order: Order = { 
       id, 
       ...orderData, 
+      status: orderData.status || "received",
       createdAt 
     };
     this.orders.set(id, order);
     return order;
   }
 
-  async updateOrderStatus(id: number, status: string): Promise<Order> {
+  async updateOrderStatus(id: number, statusValue: string): Promise<Order> {
     const order = this.orders.get(id);
     if (!order) {
       throw new Error("Order not found");
     }
-
+    
+    // Validate that status is one of the allowed values
+    if (!["received", "preparing", "ready", "completed", "cancelled"].includes(statusValue)) {
+      throw new Error("Invalid order status");
+    }
+    
+    const status = statusValue as "received" | "preparing" | "ready" | "completed" | "cancelled";
     const updatedOrder: Order = { ...order, status };
     this.orders.set(id, updatedOrder);
     return updatedOrder;
