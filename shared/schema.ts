@@ -2,6 +2,9 @@ import { pgTable, text, serial, integer, boolean, timestamp, pgEnum } from "driz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// User role enum
+export const userRoleEnum = pgEnum("user_role", ["customer", "staff", "admin"]);
+
 // User schema
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -9,7 +12,11 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   firstName: text("first_name"),
   lastName: text("last_name"),
-  isAdmin: boolean("is_admin").default(false).notNull(),
+  role: userRoleEnum("role").default("customer").notNull(),
+  isAdmin: boolean("is_admin").default(false).notNull(), // Keep for backwards compatibility
+  canteenId: integer("canteen_id"), // For staff members, associated canteen
+  profileImage: text("profile_image"),
+  contactNumber: text("contact_number"),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -17,7 +24,11 @@ export const insertUserSchema = createInsertSchema(users).pick({
   password: true,
   firstName: true,
   lastName: true,
+  role: true,
   isAdmin: true,
+  canteenId: true,
+  profileImage: true,
+  contactNumber: true,
 });
 
 // Canteen schema
@@ -121,6 +132,81 @@ export type CartItem = {
   quantity: number;
   category: string;
 };
+
+// Inventory item schema
+export const inventoryItems = pgTable("inventory_items", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  quantity: integer("quantity").notNull().default(0),
+  unit: text("unit").notNull(), // e.g., kg, liters, pieces
+  costPerUnit: integer("cost_per_unit").notNull(),
+  canteenId: integer("canteen_id").notNull(),
+  reorderLevel: integer("reorder_level").default(10).notNull(),
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+  updatedBy: integer("updated_by").notNull(), // staff member who last updated
+});
+
+export const insertInventoryItemSchema = createInsertSchema(inventoryItems).pick({
+  name: true,
+  quantity: true,
+  unit: true,
+  costPerUnit: true,
+  canteenId: true,
+  reorderLevel: true,
+  updatedBy: true,
+});
+
+// Expense tracking
+export const expenses = pgTable("expenses", {
+  id: serial("id").primaryKey(),
+  description: text("description").notNull(),
+  amount: integer("amount").notNull(),
+  canteenId: integer("canteen_id").notNull(),
+  date: timestamp("date").defaultNow().notNull(),
+  category: text("category").notNull(), // e.g., utilities, maintenance, supplies
+  recordedBy: integer("recorded_by").notNull(),
+});
+
+export const insertExpenseSchema = createInsertSchema(expenses).pick({
+  description: true,
+  amount: true,
+  canteenId: true,
+  date: true,
+  category: true,
+  recordedBy: true,
+});
+
+// Daily sales report
+export const salesReports = pgTable("sales_reports", {
+  id: serial("id").primaryKey(),
+  canteenId: integer("canteen_id").notNull(),
+  date: timestamp("date").defaultNow().notNull(),
+  totalSales: integer("total_sales").notNull(),
+  totalOrders: integer("total_orders").notNull(),
+  cashSales: integer("cash_sales").notNull().default(0),
+  onlineSales: integer("online_sales").notNull().default(0),
+  generatedBy: integer("generated_by").notNull(),
+});
+
+export const insertSalesReportSchema = createInsertSchema(salesReports).pick({
+  canteenId: true,
+  date: true,
+  totalSales: true,
+  totalOrders: true,
+  cashSales: true,
+  onlineSales: true,
+  generatedBy: true,
+});
+
+// Additional types
+export type InventoryItem = typeof inventoryItems.$inferSelect;
+export type InsertInventoryItem = z.infer<typeof insertInventoryItemSchema>;
+
+export type Expense = typeof expenses.$inferSelect;
+export type InsertExpense = z.infer<typeof insertExpenseSchema>;
+
+export type SalesReport = typeof salesReports.$inferSelect;
+export type InsertSalesReport = z.infer<typeof insertSalesReportSchema>;
 
 // For the complete order view
 export type OrderWithItems = Order & {

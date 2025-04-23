@@ -3,7 +3,10 @@ import {
   canteens,
   menuItems, 
   orders, 
-  orderItems, 
+  orderItems,
+  inventoryItems,
+  expenses,
+  salesReports,
   User, 
   InsertUser,
   Canteen,
@@ -14,7 +17,13 @@ import {
   InsertOrder, 
   OrderItem, 
   InsertOrderItem, 
-  OrderWithItems 
+  OrderWithItems,
+  InventoryItem,
+  InsertInventoryItem,
+  Expense,
+  InsertExpense,
+  SalesReport,
+  InsertSalesReport
 } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
@@ -29,6 +38,9 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, data: Partial<InsertUser>): Promise<User>;
+  getUsersByRole(role: string): Promise<User[]>;
+  getUsersByCanteen(canteenId: number): Promise<User[]>;
   
   // Canteen operations
   getAllCanteens(): Promise<Canteen[]>;
@@ -51,13 +63,40 @@ export interface IStorage {
   getActiveOrderForUser(userId: number): Promise<OrderWithItems | null>;
   getOrderHistoryForUser(userId: number): Promise<OrderWithItems[]>;
   getActiveOrders(): Promise<OrderWithItems[]>;
+  getActiveOrdersByCanteen(canteenId: number): Promise<OrderWithItems[]>;
   getOrderHistory(): Promise<OrderWithItems[]>;
+  getOrderHistoryByCanteen(canteenId: number): Promise<OrderWithItems[]>;
   createOrder(order: InsertOrder): Promise<Order>;
   updateOrderStatus(id: number, status: string): Promise<Order>;
   
   // Order item operations
   getOrderItems(orderId: number): Promise<OrderItem[]>;
   createOrderItem(orderItem: InsertOrderItem): Promise<OrderItem>;
+  
+  // Inventory operations
+  getAllInventoryItems(): Promise<InventoryItem[]>;
+  getInventoryItemsByCanteen(canteenId: number): Promise<InventoryItem[]>;
+  getInventoryItem(id: number): Promise<InventoryItem | undefined>;
+  createInventoryItem(item: InsertInventoryItem): Promise<InventoryItem>;
+  updateInventoryItem(id: number, data: Partial<InsertInventoryItem>): Promise<InventoryItem>;
+  deleteInventoryItem(id: number): Promise<void>;
+  getLowStockItems(canteenId: number): Promise<InventoryItem[]>;
+  
+  // Expense operations
+  getAllExpenses(): Promise<Expense[]>;
+  getExpensesByCanteen(canteenId: number): Promise<Expense[]>;
+  getExpense(id: number): Promise<Expense | undefined>;
+  createExpense(expense: InsertExpense): Promise<Expense>;
+  updateExpense(id: number, data: Partial<InsertExpense>): Promise<Expense>;
+  deleteExpense(id: number): Promise<void>;
+  
+  // Sales report operations
+  getAllSalesReports(): Promise<SalesReport[]>;
+  getSalesReportsByCanteen(canteenId: number): Promise<SalesReport[]>;
+  getSalesReport(id: number): Promise<SalesReport | undefined>;
+  createSalesReport(report: InsertSalesReport): Promise<SalesReport>;
+  updateSalesReport(id: number, data: Partial<InsertSalesReport>): Promise<SalesReport>;
+  deleteSalesReport(id: number): Promise<void>;
   
   // Session store
   sessionStore: SessionStore;
@@ -69,6 +108,9 @@ export class MemStorage implements IStorage {
   private menuItems: Map<number, MenuItem>;
   private orders: Map<number, Order>;
   private orderItems: Map<number, OrderItem>;
+  private inventoryItems: Map<number, InventoryItem>;
+  private expenses: Map<number, Expense>;
+  private salesReports: Map<number, SalesReport>;
   
   // Auto incrementing IDs
   private userIdCounter: number;
@@ -76,6 +118,9 @@ export class MemStorage implements IStorage {
   private menuItemIdCounter: number;
   private orderIdCounter: number;
   private orderItemIdCounter: number;
+  private inventoryIdCounter: number;
+  private expenseIdCounter: number;
+  private salesReportIdCounter: number;
   
   public sessionStore: SessionStore;
 
@@ -85,12 +130,18 @@ export class MemStorage implements IStorage {
     this.menuItems = new Map();
     this.orders = new Map();
     this.orderItems = new Map();
+    this.inventoryItems = new Map();
+    this.expenses = new Map();
+    this.salesReports = new Map();
     
     this.userIdCounter = 1;
     this.canteenIdCounter = 1;
     this.menuItemIdCounter = 1;
     this.orderIdCounter = 1;
     this.orderItemIdCounter = 1;
+    this.inventoryIdCounter = 1;
+    this.expenseIdCounter = 1;
+    this.salesReportIdCounter = 1;
     
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000, // 24 hours
@@ -105,7 +156,36 @@ export class MemStorage implements IStorage {
       password: "812b2cbbffd29586500e3685427b0da34702b94229216b162da0ffa7c066e55e75cf28298422d0a7e1858321e1d530078197b06fbed16392ac1502dad14beeef.e77ba4ffe8c10951f4c2901b8aaed94f", // "123456"
       firstName: "Admin",
       lastName: "User",
+      role: "admin",
       isAdmin: true,
+    }).then();
+    
+    // Add a staff user for each canteen
+    this.createUser({
+      username: "staff_main@gmail.com",
+      password: "812b2cbbffd29586500e3685427b0da34702b94229216b162da0ffa7c066e55e75cf28298422d0a7e1858321e1d530078197b06fbed16392ac1502dad14beeef.e77ba4ffe8c10951f4c2901b8aaed94f", // "123456"
+      firstName: "Staff",
+      lastName: "Main",
+      role: "staff",
+      canteenId: 1,
+    }).then();
+    
+    this.createUser({
+      username: "staff_engg@gmail.com",
+      password: "812b2cbbffd29586500e3685427b0da34702b94229216b162da0ffa7c066e55e75cf28298422d0a7e1858321e1d530078197b06fbed16392ac1502dad14beeef.e77ba4ffe8c10951f4c2901b8aaed94f", // "123456"
+      firstName: "Staff",
+      lastName: "Engineering",
+      role: "staff",
+      canteenId: 2,
+    }).then();
+    
+    this.createUser({
+      username: "staff_science@gmail.com",
+      password: "812b2cbbffd29586500e3685427b0da34702b94229216b162da0ffa7c066e55e75cf28298422d0a7e1858321e1d530078197b06fbed16392ac1502dad14beeef.e77ba4ffe8c10951f4c2901b8aaed94f", // "123456"
+      firstName: "Staff",
+      lastName: "Science",
+      role: "staff",
+      canteenId: 3,
     }).then();
   }
 
