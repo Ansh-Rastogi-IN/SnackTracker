@@ -47,7 +47,7 @@ export interface IStorage {
   
   // Order operations
   getOrder(id: number): Promise<Order | undefined>;
-  getOrderWithItems(id: number): Promise<OrderWithItems | undefined>;
+  getOrderWithItems(id: number): Promise<OrderWithItems | null>;
   getActiveOrderForUser(userId: number): Promise<OrderWithItems | null>;
   getOrderHistoryForUser(userId: number): Promise<OrderWithItems[]>;
   getActiveOrders(): Promise<OrderWithItems[]>;
@@ -60,7 +60,7 @@ export interface IStorage {
   createOrderItem(orderItem: InsertOrderItem): Promise<OrderItem>;
   
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: SessionStore;
 }
 
 export class MemStorage implements IStorage {
@@ -77,7 +77,7 @@ export class MemStorage implements IStorage {
   private orderIdCounter: number;
   private orderItemIdCounter: number;
   
-  public sessionStore: session.SessionStore;
+  public sessionStore: SessionStore;
 
   constructor() {
     this.users = new Map();
@@ -96,6 +96,9 @@ export class MemStorage implements IStorage {
       checkPeriod: 86400000, // 24 hours
     });
     
+    // Initialize default data
+    this.initializeDefaultCanteens();
+    
     // Add initial admin user
     this.createUser({
       username: "admin@gmail.com",
@@ -103,86 +106,6 @@ export class MemStorage implements IStorage {
       firstName: "Admin",
       lastName: "User",
       isAdmin: true,
-    }).then();
-    
-    // Add the three college canteens
-    this.createCanteen({
-      name: "Main Canteen",
-      location: "Main Building",
-      description: "The main canteen serving a variety of dishes",
-      imageUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      isActive: true,
-    }).then();
-    
-    this.createCanteen({
-      name: "Engineering Block Canteen",
-      location: "Engineering Block",
-      description: "Quick bites and meals for engineering students",
-      imageUrl: "https://images.unsplash.com/photo-1559305616-3f99cd43e353?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      isActive: true,
-    }).then();
-    
-    this.createCanteen({
-      name: "Science Block Café",
-      location: "Science Block",
-      description: "Coffee, snacks and light meals",
-      imageUrl: "https://images.unsplash.com/photo-1521017432531-fbd92d768814?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      isActive: true,
-    }).then();
-    
-    // Add some default menu items
-    this.createMenuItem({
-      name: "Cheese Pizza",
-      description: "Classic cheese pizza with fresh basil",
-      price: 120,
-      imageUrl: "https://images.unsplash.com/photo-1513104890138-7c749659a591?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      category: "veg",
-      isAvailable: true,
-    }).then();
-    
-    this.createMenuItem({
-      name: "Classic Burger",
-      description: "Juicy beef patty with fresh veggies",
-      price: 150,
-      imageUrl: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      category: "nonveg",
-      isAvailable: true,
-    }).then();
-    
-    this.createMenuItem({
-      name: "Masala Dosa",
-      description: "Crispy dosa with potato filling",
-      price: 80,
-      imageUrl: "https://images.unsplash.com/photo-1623238913327-121b8a7e7b93?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      category: "veg",
-      isAvailable: true,
-    }).then();
-    
-    this.createMenuItem({
-      name: "Samosa",
-      description: "Crispy pastry with spiced potatoes",
-      price: 25,
-      imageUrl: "https://images.unsplash.com/photo-1551024601-bec78aea704b?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      category: "snacks",
-      isAvailable: true,
-    }).then();
-    
-    this.createMenuItem({
-      name: "Masala Chai",
-      description: "Spiced Indian tea",
-      price: 20,
-      imageUrl: "https://images.unsplash.com/photo-1593722152148-1a8cc62ac2b5?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      category: "beverages",
-      isAvailable: true,
-    }).then();
-    
-    this.createMenuItem({
-      name: "Chicken Biryani",
-      description: "Fragrant rice with chicken",
-      price: 180,
-      imageUrl: "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      category: "nonveg",
-      isAvailable: true,
     }).then();
   }
 
@@ -399,6 +322,98 @@ export class MemStorage implements IStorage {
     const orderItem: OrderItem = { id, ...orderItemData };
     this.orderItems.set(id, orderItem);
     return orderItem;
+  }
+  
+  // ======== Initialization Methods ========
+  
+  private async initializeDefaultCanteens() {
+    // Create the three college canteens
+    const mainCanteen = await this.createCanteen({
+      name: "Main Canteen",
+      location: "Main Building",
+      description: "The main canteen serving a variety of dishes",
+      imageUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      isActive: true,
+    });
+    
+    const engineeringCanteen = await this.createCanteen({
+      name: "Engineering Block Canteen",
+      location: "Engineering Block",
+      description: "Quick bites and meals for engineering students",
+      imageUrl: "https://images.unsplash.com/photo-1559305616-3f99cd43e353?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      isActive: true,
+    });
+    
+    const scienceCanteen = await this.createCanteen({
+      name: "Science Block Café",
+      location: "Science Block",
+      description: "Coffee, snacks and light meals",
+      imageUrl: "https://images.unsplash.com/photo-1521017432531-fbd92d768814?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      isActive: true,
+    });
+    
+    // Add menu items for Main Canteen
+    await this.createMenuItem({
+      name: "Cheese Pizza",
+      description: "Classic cheese pizza with fresh basil",
+      price: 120,
+      imageUrl: "https://images.unsplash.com/photo-1513104890138-7c749659a591?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      category: "veg",
+      isAvailable: true,
+      canteenId: mainCanteen.id,
+    });
+    
+    await this.createMenuItem({
+      name: "Classic Burger",
+      description: "Juicy beef patty with fresh veggies",
+      price: 150,
+      imageUrl: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      category: "nonveg",
+      isAvailable: true,
+      canteenId: mainCanteen.id,
+    });
+    
+    // Add menu items for Engineering Canteen
+    await this.createMenuItem({
+      name: "Masala Dosa",
+      description: "Crispy dosa with potato filling",
+      price: 80,
+      imageUrl: "https://images.unsplash.com/photo-1623238913327-121b8a7e7b93?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      category: "veg",
+      isAvailable: true,
+      canteenId: engineeringCanteen.id,
+    });
+    
+    await this.createMenuItem({
+      name: "Samosa",
+      description: "Crispy pastry with spiced potatoes",
+      price: 25,
+      imageUrl: "https://images.unsplash.com/photo-1551024601-bec78aea704b?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: engineeringCanteen.id,
+    });
+    
+    // Add menu items for Science Canteen
+    await this.createMenuItem({
+      name: "Masala Chai",
+      description: "Spiced Indian tea",
+      price: 20,
+      imageUrl: "https://images.unsplash.com/photo-1593722152148-1a8cc62ac2b5?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      category: "beverages",
+      isAvailable: true,
+      canteenId: scienceCanteen.id,
+    });
+    
+    await this.createMenuItem({
+      name: "Chicken Biryani",
+      description: "Fragrant rice with chicken",
+      price: 180,
+      imageUrl: "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      category: "nonveg",
+      isAvailable: true,
+      canteenId: scienceCanteen.id,
+    });
   }
 }
 
