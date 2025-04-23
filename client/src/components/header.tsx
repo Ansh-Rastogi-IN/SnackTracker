@@ -33,7 +33,7 @@ export default function Header({ cartItemsCount = 0, onCartClick }: HeaderProps)
                 <div className="h-10 w-10 mr-2 bg-primary rounded-full flex items-center justify-center text-white">
                   <i className="ri-restaurant-line text-xl"></i>
                 </div>
-                <h1 className="text-xl font-poppins font-bold text-primary">SnackTrack</h1>
+                <h1 className="text-xl font-poppins font-bold text-primary">SnacTrack</h1>
               </a>
             </Link>
           </div>

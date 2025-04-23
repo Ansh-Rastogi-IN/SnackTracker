@@ -20,6 +20,24 @@ export const insertUserSchema = createInsertSchema(users).pick({
   isAdmin: true,
 });
 
+// Canteen schema
+export const canteens = pgTable("canteens", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  location: text("location").notNull(),
+  description: text("description"),
+  imageUrl: text("image_url"),
+  isActive: boolean("is_active").default(true).notNull(),
+});
+
+export const insertCanteenSchema = createInsertSchema(canteens).pick({
+  name: true,
+  location: true,
+  description: true,
+  imageUrl: true,
+  isActive: true,
+});
+
 // Category enum
 export const categoryEnum = pgEnum("category", ["veg", "nonveg", "snacks", "beverages"]);
 
@@ -32,6 +50,7 @@ export const menuItems = pgTable("menu_items", {
   imageUrl: text("image_url"),
   category: categoryEnum("category").notNull(),
   isAvailable: boolean("is_available").default(true).notNull(),
+  canteenId: integer("canteen_id").default(1).notNull(), // Default to first canteen
 });
 
 export const insertMenuItemSchema = createInsertSchema(menuItems).pick({
@@ -41,6 +60,7 @@ export const insertMenuItemSchema = createInsertSchema(menuItems).pick({
   imageUrl: true,
   category: true,
   isAvailable: true,
+  canteenId: true,
 });
 
 // Order status enum
@@ -80,6 +100,9 @@ export const insertOrderItemSchema = createInsertSchema(orderItems).pick({
 // Type definitions
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type Canteen = typeof canteens.$inferSelect;
+export type InsertCanteen = z.infer<typeof insertCanteenSchema>;
 
 export type MenuItem = typeof menuItems.$inferSelect;
 export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;

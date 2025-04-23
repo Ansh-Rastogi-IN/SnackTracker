@@ -80,8 +80,8 @@ export class MemStorage implements IStorage {
     
     // Add initial admin user
     this.createUser({
-      username: "admin@snacktrack.com",
-      password: "$2b$10$dJGWxnTqzY5dOKM1S7VUXOrOVRtVFUAGGYGsZHCMUSgLe.lByjBzK", // "admin123"
+      username: "admin@gmail.com",
+      password: "812b2cbbffd29586500e3685427b0da34702b94229216b162da0ffa7c066e55e75cf28298422d0a7e1858321e1d530078197b06fbed16392ac1502dad14beeef.e77ba4ffe8c10951f4c2901b8aaed94f", // "123456"
       firstName: "Admin",
       lastName: "User",
       isAdmin: true,

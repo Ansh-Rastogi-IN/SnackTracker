@@ -1,0 +1,107 @@
+Got it! Here's the revised Replit prompt with the correct project name SnackTrack and a strong focus on building an interactive and attractive UI:
+
+
+---
+
+SnackTrack – A Stylish & Interactive Digital Canteen System
+
+Prompt/Project Description:
+SnackTrack is a modern digital canteen web app built for colleges, designed with a focus on beautiful UI, seamless user experience, and real-time interactivity. This project aims to enhance how students and staff interact with their college canteen by providing an elegant, responsive interface that’s a joy to use.
+
+The priority is to create a visually stunning and interactive frontend, backed by smart features like live order tracking, digital payments, and a sleek admin dashboard.
+
+
+---
+
+UI/UX Goals:
+
+Clean & Minimal UI with responsive design using Tailwind CSS
+
+Smooth animations with Framer Motion or CSS transitions
+
+Mobile-first layout for perfect experience on all screen sizes
+
+Dark/Light theme toggle
+
+Interactive components like animated menus, modals, and progress indicators
+
+Accessibility features: contrast toggle, keyboard navigation
+
+
+
+---
+
+Core UI Features to Implement:
+
+1. Home Page
+
+Animated intro banner
+
+Quick-access buttons (Order Now, View Menu)
+
+
+2. Menu Page
+
+Grid layout of food cards with images, prices, and tags (veg/non-veg)
+
+Category filters & live search bar
+
+"Add to Cart" with animation feedback
+
+
+3. Cart & Checkout
+
+Slide-in cart sidebar
+
+Dynamic price calculation
+
+UPI/Wallet/Debit/Credit options
+
+
+4. Live Order Tracking
+
+Visual step tracker (Ordered → Preparing → Ready)
+
+Real-time status updates using WebSocket or polling
+
+
+5. User Profile
+
+Order history with quick reorder
+
+Ratings & feedback form with stars and emojis
+
+
+6. Admin Dashboard
+
+Clean tabbed UI for Orders, Inventory, Menu Management
+
+Chart-based analytics using libraries like Chart.js or Recharts
+
+Instant item update with toast notifications
+
+
+
+---
+
+Suggested Stack for UI:
+
+Frontend: React.js + Tailwind CSS + Framer Motion
+
+Backend (for later stages): Flask or Node.js
+
+Authentication: Firebase Auth or JWT
+
+Live Updates: Socket.io or Fetch polling
+
+
+
+---
+
+Goal:
+Deliver a professional-grade, attractive canteen ordering system that feels like a real app you’d want to use every day. Focus on delighting users through intuitive design, speed, and polish.
+
+
+---
+
+Let me know if you want a starter template or wireframe mockup too!
