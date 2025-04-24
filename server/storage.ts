@@ -152,38 +152,39 @@ export class MemStorage implements IStorage {
     
     // Add initial admin user
     this.createUser({
-      username: "admin@gmail.com",
-      password: "812b2cbbffd29586500e3685427b0da34702b94229216b162da0ffa7c066e55e75cf28298422d0a7e1858321e1d530078197b06fbed16392ac1502dad14beeef.e77ba4ffe8c10951f4c2901b8aaed94f", // "123456"
-      firstName: "Admin",
-      lastName: "User",
+      username: "ansh@gmail.com",
+      password: "812b2cbbffd29586500e3685427b0da34702b94229216b162da0ffa7c066e55e75cf28298422d0a7e1858321e1d530078197b06fbed16392ac1502dad14beeef.e77ba4ffe8c10951f4c2901b8aaed94f", // "ansh"
+      firstName: "Ansh",
+      lastName: "Admin",
       role: "admin",
       isAdmin: true,
     }).then();
     
-    // Add a staff user for each canteen
+    // Add canteen staff user
     this.createUser({
-      username: "staff_main@gmail.com",
-      password: "812b2cbbffd29586500e3685427b0da34702b94229216b162da0ffa7c066e55e75cf28298422d0a7e1858321e1d530078197b06fbed16392ac1502dad14beeef.e77ba4ffe8c10951f4c2901b8aaed94f", // "123456"
-      firstName: "Staff",
-      lastName: "Main",
+      username: "test@gmail.com",
+      password: "812b2cbbffd29586500e3685427b0da34702b94229216b162da0ffa7c066e55e75cf28298422d0a7e1858321e1d530078197b06fbed16392ac1502dad14beeef.e77ba4ffe8c10951f4c2901b8aaed94f", // "test"
+      firstName: "Test",
+      lastName: "Staff",
       role: "staff",
       canteenId: 1,
     }).then();
     
+    // Add staff users for other canteens
     this.createUser({
-      username: "staff_engg@gmail.com",
-      password: "812b2cbbffd29586500e3685427b0da34702b94229216b162da0ffa7c066e55e75cf28298422d0a7e1858321e1d530078197b06fbed16392ac1502dad14beeef.e77ba4ffe8c10951f4c2901b8aaed94f", // "123456"
-      firstName: "Staff",
-      lastName: "Engineering",
+      username: "kuteera@gmail.com",
+      password: "812b2cbbffd29586500e3685427b0da34702b94229216b162da0ffa7c066e55e75cf28298422d0a7e1858321e1d530078197b06fbed16392ac1502dad14beeef.e77ba4ffe8c10951f4c2901b8aaed94f",
+      firstName: "Kuteera",
+      lastName: "Staff",
       role: "staff",
       canteenId: 2,
     }).then();
     
     this.createUser({
-      username: "staff_science@gmail.com",
-      password: "812b2cbbffd29586500e3685427b0da34702b94229216b162da0ffa7c066e55e75cf28298422d0a7e1858321e1d530078197b06fbed16392ac1502dad14beeef.e77ba4ffe8c10951f4c2901b8aaed94f", // "123456"
-      firstName: "Staff",
-      lastName: "Science",
+      username: "wake@gmail.com",
+      password: "812b2cbbffd29586500e3685427b0da34702b94229216b162da0ffa7c066e55e75cf28298422d0a7e1858321e1d530078197b06fbed16392ac1502dad14beeef.e77ba4ffe8c10951f4c2901b8aaed94f",
+      firstName: "Wake",
+      lastName: "Bite",
       role: "staff",
       canteenId: 3,
     }).then();
@@ -585,60 +586,59 @@ export class MemStorage implements IStorage {
   
   private async initializeDefaultCanteens() {
     // Create the three college canteens
-    const mainCanteen = await this.createCanteen({
-      name: "Main Canteen",
-      location: "Main Building",
-      description: "The main canteen serving a variety of dishes",
+    const foodCourtCanteen = await this.createCanteen({
+      name: "Food Court",
+      location: "LAB BLOCK 1st Floor",
+      description: "The main food court serving a variety of north and south Indian dishes",
       imageUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
       isActive: true,
     });
     
-    const engineeringCanteen = await this.createCanteen({
-      name: "Engineering Block Canteen",
-      location: "Engineering Block",
-      description: "Quick bites and meals for engineering students",
+    const kuteeraCanteen = await this.createCanteen({
+      name: "KUTEERA",
+      location: "Kuteera Building",
+      description: "Quick bites and meals at Kuteera building",
       imageUrl: "https://images.unsplash.com/photo-1559305616-3f99cd43e353?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
       isActive: true,
     });
     
-    const scienceCanteen = await this.createCanteen({
-      name: "Science Block Café",
-      location: "Science Block",
-      description: "Coffee, snacks and light meals",
+    const wakeNBiteCanteen = await this.createCanteen({
+      name: "Wake n Bite",
+      location: "Campus Center",
+      description: "Bakery and pastry items, coffee, snacks and refreshments",
       imageUrl: "https://images.unsplash.com/photo-1521017432531-fbd92d768814?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
       isActive: true,
     });
     
-    // Add menu items for Main Canteen
+    // Add menu items for Food Court (North and South Indian meals, snacks)
     await this.createMenuItem({
-      name: "Cheese Pizza",
-      description: "Classic cheese pizza with fresh basil",
-      price: 120,
-      imageUrl: "https://images.unsplash.com/photo-1513104890138-7c749659a591?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      category: "veg",
-      isAvailable: true,
-      canteenId: mainCanteen.id,
-    });
-    
-    await this.createMenuItem({
-      name: "Classic Burger",
-      description: "Juicy beef patty with fresh veggies",
-      price: 150,
-      imageUrl: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      name: "Butter Chicken",
+      description: "Classic North Indian butter chicken with rich gravy",
+      price: 180,
+      imageUrl: "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
       category: "nonveg",
       isAvailable: true,
-      canteenId: mainCanteen.id,
+      canteenId: foodCourtCanteen.id,
     });
     
-    // Add menu items for Engineering Canteen
     await this.createMenuItem({
-      name: "Masala Dosa",
-      description: "Crispy dosa with potato filling",
-      price: 80,
-      imageUrl: "https://images.unsplash.com/photo-1623238913327-121b8a7e7b93?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      name: "Dal Makhani",
+      description: "Creamy black lentil curry, North Indian style",
+      price: 120,
+      imageUrl: "https://images.unsplash.com/photo-1546833998-877b37c2e4c6?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
       category: "veg",
       isAvailable: true,
-      canteenId: engineeringCanteen.id,
+      canteenId: foodCourtCanteen.id,
+    });
+    
+    await this.createMenuItem({
+      name: "Masala Dosa",
+      description: "South Indian crispy dosa with potato filling",
+      price: 90,
+      imageUrl: "https://images.unsplash.com/photo-1624360442384-238602bc5415?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      category: "veg",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
     });
     
     await this.createMenuItem({
@@ -648,10 +648,20 @@ export class MemStorage implements IStorage {
       imageUrl: "https://images.unsplash.com/photo-1551024601-bec78aea704b?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
       category: "snacks",
       isAvailable: true,
-      canteenId: engineeringCanteen.id,
+      canteenId: foodCourtCanteen.id,
     });
     
-    // Add menu items for Science Canteen
+    // Add menu items for Kuteera
+    await this.createMenuItem({
+      name: "Veg Fried Rice",
+      description: "Stir-fried rice with mixed vegetables",
+      price: 100,
+      imageUrl: "https://images.unsplash.com/photo-1645607173795-8b0e5fadaa68?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      category: "veg",
+      isAvailable: true,
+      canteenId: kuteeraCanteen.id,
+    });
+    
     await this.createMenuItem({
       name: "Masala Chai",
       description: "Spiced Indian tea",
@@ -659,17 +669,28 @@ export class MemStorage implements IStorage {
       imageUrl: "https://images.unsplash.com/photo-1593722152148-1a8cc62ac2b5?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
       category: "beverages",
       isAvailable: true,
-      canteenId: scienceCanteen.id,
+      canteenId: kuteeraCanteen.id,
+    });
+    
+    // Add menu items for Wake n Bite (bakery and pastry items)
+    await this.createMenuItem({
+      name: "Chocolate Pastry",
+      description: "Rich chocolate pastry with cream filling",
+      price: 60,
+      imageUrl: "https://images.unsplash.com/photo-1614707267537-b85aaf00c4b7?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: wakeNBiteCanteen.id,
     });
     
     await this.createMenuItem({
-      name: "Chicken Biryani",
-      description: "Fragrant rice with chicken",
-      price: 180,
-      imageUrl: "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
-      category: "nonveg",
+      name: "Butter Croissant",
+      description: "Flaky French butter croissant, freshly baked",
+      price: 50,
+      imageUrl: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      category: "snacks",
       isAvailable: true,
-      canteenId: scienceCanteen.id,
+      canteenId: wakeNBiteCanteen.id,
     });
   }
 }
