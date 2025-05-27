@@ -133,11 +133,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Always grant access to admin users
     if (user.isAdmin || user.role === 'admin') return true;
 
+    const userRole = user.role || "customer";
+
     if (Array.isArray(role)) {
-      return role.includes(user.role);
+      return role.includes(userRole);
     }
 
-    return user.role === role;
+    return userRole === role;
   };
 
   return (

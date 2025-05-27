@@ -24,8 +24,8 @@ function Router() {
       
       {/* Customer routes */}
       <ProtectedRoute path="/" component={HomePage} />
-      <ProtectedRoute path="/menu" component={MenuPage} roles={["customer"]} />
-      <ProtectedRoute path="/orders" component={OrdersPage} roles={["customer"]} />
+      <ProtectedRoute path="/menu" component={MenuPage} roles={["customer", "staff", "admin"]} />
+      <ProtectedRoute path="/orders" component={OrdersPage} roles={["customer", "staff", "admin"]} />
       
       {/* Admin routes */}
       <ProtectedRoute path="/admin/orders" component={AdminOrdersPage} roles={["admin"]} />

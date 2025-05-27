@@ -1,23 +1,20 @@
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useLocation } from "wouter";
 
 export default function HomePage() {
   const { user, isAdmin } = useAuth();
-  const [location, setLocation] = useLocation();
-  const hasRedirected = useRef(false);
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
-    // Only redirect if we haven't redirected yet and we're still on the home page
-    if (user && !hasRedirected.current && location === "/") {
-      hasRedirected.current = true;
-      if (isAdmin) {
+    if (user) {
+      if (user.isAdmin || user.role === 'admin') {
         setLocation("/admin/orders");
       } else {
         setLocation("/menu");
       }
     }
-  }, [user, isAdmin, location, setLocation]);
+  }, [user, setLocation]);
 
   return (
     <div className="flex items-center justify-center min-h-screen">
