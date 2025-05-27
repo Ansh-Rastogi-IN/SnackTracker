@@ -7,9 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema } from "@shared/schema";
 import { z } from "zod";
-import { Redirect } from "wouter";
+import { insertUserSchema } from "@shared/schema";
+import { useLocation } from "wouter";
+import { useEffect } from "react";
 
 const loginSchema = z.object({
   username: z.string().email("Please enter a valid email"),
@@ -29,7 +30,8 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
-  
+  const [, navigate] = useLocation();
+
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -63,10 +65,12 @@ export default function AuthPage() {
     registerMutation.mutate(registrationData);
   };
 
-  // Redirect if already logged in
-  if (user) {
-    return <Redirect to="/" />;
-  }
+  useEffect(() => {
+    if (user) {
+      navigate("/");
+    }
+  }, [user, navigate]);
+
 
   return (
     <div className="flex min-h-screen">
@@ -77,13 +81,13 @@ export default function AuthPage() {
             <h1 className="text-3xl font-poppins font-bold text-primary mb-2">SnackTrack</h1>
             <p className="text-neutral-400">Your smart digital canteen management system</p>
           </div>
-          
+
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="login">Login</TabsTrigger>
               <TabsTrigger value="register">Register</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="login">
               <Card>
                 <CardContent className="pt-6">
@@ -100,7 +104,7 @@ export default function AuthPage() {
                         <p className="text-sm text-red-500">{loginForm.formState.errors.username.message}</p>
                       )}
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="password">Password</Label>
                       <Input 
@@ -113,7 +117,7 @@ export default function AuthPage() {
                         <p className="text-sm text-red-500">{loginForm.formState.errors.password.message}</p>
                       )}
                     </div>
-                    
+
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <Checkbox id="remember" {...loginForm.register("rememberMe")} />
@@ -121,7 +125,7 @@ export default function AuthPage() {
                       </div>
                       <a href="#" className="text-sm text-primary hover:underline">Forgot password?</a>
                     </div>
-                    
+
                     <Button 
                       type="submit" 
                       className="w-full bg-primary hover:bg-orange-600" 
@@ -133,7 +137,7 @@ export default function AuthPage() {
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="register">
               <Card>
                 <CardContent className="pt-6">
@@ -156,7 +160,7 @@ export default function AuthPage() {
                         />
                       </div>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="regEmail">Email</Label>
                       <Input 
@@ -169,7 +173,7 @@ export default function AuthPage() {
                         <p className="text-sm text-red-500">{registerForm.formState.errors.username.message}</p>
                       )}
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="regPassword">Password</Label>
                       <Input 
@@ -182,7 +186,7 @@ export default function AuthPage() {
                         <p className="text-sm text-red-500">{registerForm.formState.errors.password.message}</p>
                       )}
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="confirmPassword">Confirm Password</Label>
                       <Input 
@@ -195,7 +199,7 @@ export default function AuthPage() {
                         <p className="text-sm text-red-500">{registerForm.formState.errors.confirmPassword.message}</p>
                       )}
                     </div>
-                    
+
                     <Button 
                       type="submit" 
                       className="w-full bg-primary hover:bg-orange-600"
@@ -210,7 +214,7 @@ export default function AuthPage() {
           </Tabs>
         </div>
       </div>
-      
+
       {/* Right side - Hero section */}
       <div className="hidden lg:flex lg:w-1/2 bg-primary items-center justify-center">
         <div className="max-w-md text-center p-8">
@@ -218,7 +222,7 @@ export default function AuthPage() {
           <p className="text-white/90 mb-8 text-lg">
             Your smart digital canteen management system. Order food, track your orders, and enjoy a seamless dining experience.
           </p>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
             <div className="bg-white/10 p-4 rounded-lg backdrop-blur-sm">
               <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -227,7 +231,7 @@ export default function AuthPage() {
               <h3 className="text-white font-medium mb-1">Browse Menu</h3>
               <p className="text-white/80 text-sm">Explore delicious food items</p>
             </div>
-            
+
             <div className="bg-white/10 p-4 rounded-lg backdrop-blur-sm">
               <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
                 <i className="ri-time-line text-xl text-white"></i>
@@ -235,7 +239,7 @@ export default function AuthPage() {
               <h3 className="text-white font-medium mb-1">Save Time</h3>
               <p className="text-white/80 text-sm">Pre-order your meals</p>
             </div>
-            
+
             <div className="bg-white/10 p-4 rounded-lg backdrop-blur-sm">
               <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
                 <i className="ri-wallet-3-line text-xl text-white"></i>
