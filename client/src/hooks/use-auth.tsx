@@ -41,23 +41,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const loginMutation = useMutation({
-    mutationFn: async (credentials: LoginData) => {
-      const res = await apiRequest("POST", "/api/login", credentials);
-      return await res.json();
+    mutationFn: async (credentials: { username: string; password: string }) => {
+      try {
+        const res = await apiRequest("POST", "/api/login", credentials);
+        return res.json();
+      } catch (error: any) {
+        // Parse the error response
+        if (error.message.includes('401')) {
+          throw new Error('Invalid username or password');
+        }
+        throw error;
+      }
     },
-    onSuccess: (user: SelectUser) => {
-      queryClient.setQueryData(["/api/user"], user);
-      setIsAdmin(user.isAdmin || false);
-      setLocation(isAdmin ? "/admin/orders" : "/menu");
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       toast({
         title: "Login successful",
-        description: `Welcome back${user.firstName ? `, ${user.firstName}` : ''}!`,
+        description: "Welcome back!",
       });
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
+      console.error("Login failed:", error);
       toast({
         title: "Login failed",
-        description: error.message,
+        description: error.message || "Please check your credentials and try again.",
         variant: "destructive",
       });
     },
@@ -118,18 +125,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsAdmin(false);
     setLocation("/menu");
   };
-  
+
   // Function to check if user has a specific role or any of the roles provided in an array
   const hasRole = (role: string | string[]): boolean => {
     if (!user) return false;
-    
+
     // Always grant access to admin users
     if (user.isAdmin || user.role === 'admin') return true;
-    
+
     if (Array.isArray(role)) {
       return role.includes(user.role);
     }
-    
+
     return user.role === role;
   };
 

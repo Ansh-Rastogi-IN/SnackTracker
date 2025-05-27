@@ -1,3 +1,10 @@
+import { drizzle } from "drizzle-orm/postgres-js";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
+import postgres from "postgres";
+import session from "express-session";
+import { eq, and, desc, asc } from "drizzle-orm";
+import { scrypt, randomBytes } from "crypto";
+import { promisify } from "util";
 import { 
   users,
   canteens,
@@ -25,8 +32,15 @@ import {
   SalesReport,
   InsertSalesReport
 } from "@shared/schema";
-import session from "express-session";
 import createMemoryStore from "memorystore";
+
+const scryptAsync = promisify(scrypt);
+
+async function hashPassword(password: string) {
+  const salt = randomBytes(16).toString("hex");
+  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${buf.toString("hex")}.${salt}`;
+}
 
 const MemoryStore = createMemoryStore(session);
 
@@ -41,14 +55,14 @@ export interface IStorage {
   updateUser(id: number, data: Partial<InsertUser>): Promise<User>;
   getUsersByRole(role: string): Promise<User[]>;
   getUsersByCanteen(canteenId: number): Promise<User[]>;
-  
+
   // Canteen operations
   getAllCanteens(): Promise<Canteen[]>;
   getCanteen(id: number): Promise<Canteen | undefined>;
   createCanteen(canteen: InsertCanteen): Promise<Canteen>;
   updateCanteen(id: number, data: Partial<InsertCanteen>): Promise<Canteen>;
   deleteCanteen(id: number): Promise<void>;
-  
+
   // Menu item operations
   getAllMenuItems(): Promise<MenuItem[]>;
   getMenuItemsByCanteen(canteenId: number): Promise<MenuItem[]>;
@@ -56,7 +70,7 @@ export interface IStorage {
   createMenuItem(menuItem: InsertMenuItem): Promise<MenuItem>;
   updateMenuItem(id: number, data: Partial<InsertMenuItem>): Promise<MenuItem>;
   deleteMenuItem(id: number): Promise<void>;
-  
+
   // Order operations
   getOrder(id: number): Promise<Order | undefined>;
   getOrderWithItems(id: number): Promise<OrderWithItems | null>;
@@ -68,11 +82,11 @@ export interface IStorage {
   getOrderHistoryByCanteen(canteenId: number): Promise<OrderWithItems[]>;
   createOrder(order: InsertOrder): Promise<Order>;
   updateOrderStatus(id: number, status: string): Promise<Order>;
-  
+
   // Order item operations
   getOrderItems(orderId: number): Promise<OrderItem[]>;
   createOrderItem(orderItem: InsertOrderItem): Promise<OrderItem>;
-  
+
   // Inventory operations
   getAllInventoryItems(): Promise<InventoryItem[]>;
   getInventoryItemsByCanteen(canteenId: number): Promise<InventoryItem[]>;
@@ -81,7 +95,7 @@ export interface IStorage {
   updateInventoryItem(id: number, data: Partial<InsertInventoryItem>): Promise<InventoryItem>;
   deleteInventoryItem(id: number): Promise<void>;
   getLowStockItems(canteenId: number): Promise<InventoryItem[]>;
-  
+
   // Expense operations
   getAllExpenses(): Promise<Expense[]>;
   getExpensesByCanteen(canteenId: number): Promise<Expense[]>;
@@ -89,7 +103,7 @@ export interface IStorage {
   createExpense(expense: InsertExpense): Promise<Expense>;
   updateExpense(id: number, data: Partial<InsertExpense>): Promise<Expense>;
   deleteExpense(id: number): Promise<void>;
-  
+
   // Sales report operations
   getAllSalesReports(): Promise<SalesReport[]>;
   getSalesReportsByCanteen(canteenId: number): Promise<SalesReport[]>;
@@ -97,7 +111,7 @@ export interface IStorage {
   createSalesReport(report: InsertSalesReport): Promise<SalesReport>;
   updateSalesReport(id: number, data: Partial<InsertSalesReport>): Promise<SalesReport>;
   deleteSalesReport(id: number): Promise<void>;
-  
+
   // Session store
   sessionStore: SessionStore;
 }
@@ -111,7 +125,7 @@ export class MemStorage implements IStorage {
   private inventoryItems: Map<number, InventoryItem>;
   private expenses: Map<number, Expense>;
   private salesReports: Map<number, SalesReport>;
-  
+
   // Auto incrementing IDs
   private userIdCounter: number;
   private canteenIdCounter: number;
@@ -121,7 +135,7 @@ export class MemStorage implements IStorage {
   private inventoryIdCounter: number;
   private expenseIdCounter: number;
   private salesReportIdCounter: number;
-  
+
   public sessionStore: SessionStore;
 
   constructor() {
@@ -133,7 +147,7 @@ export class MemStorage implements IStorage {
     this.inventoryItems = new Map();
     this.expenses = new Map();
     this.salesReports = new Map();
-    
+
     this.userIdCounter = 1;
     this.canteenIdCounter = 1;
     this.menuItemIdCounter = 1;
@@ -142,14 +156,14 @@ export class MemStorage implements IStorage {
     this.inventoryIdCounter = 1;
     this.expenseIdCounter = 1;
     this.salesReportIdCounter = 1;
-    
+
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000, // 24 hours
     });
-    
+
     // Initialize default data
     this.initializeDefaultCanteens();
-    
+
     // Add initial admin user
     this.createUser({
       username: "ansh@gmail.com",
@@ -159,7 +173,7 @@ export class MemStorage implements IStorage {
       role: "admin",
       isAdmin: true,
     }).then();
-    
+
     // Add canteen staff user
     this.createUser({
       username: "test@gmail.com",
@@ -169,7 +183,7 @@ export class MemStorage implements IStorage {
       role: "staff",
       canteenId: 1,
     }).then();
-    
+
     // Add staff users for other canteens
     this.createUser({
       username: "kuteera@gmail.com",
@@ -179,7 +193,7 @@ export class MemStorage implements IStorage {
       role: "staff",
       canteenId: 2,
     }).then();
-    
+
     this.createUser({
       username: "wake@gmail.com",
       password: "812b2cbbffd29586500e3685427b0da34702b94229216b162da0ffa7c066e55e75cf28298422d0a7e1858321e1d530078197b06fbed16392ac1502dad14beeef.e77ba4ffe8c10951f4c2901b8aaed94f",
@@ -191,7 +205,7 @@ export class MemStorage implements IStorage {
   }
 
   // ======== User Methods ========
-  
+
   async getUser(id: number): Promise<User | undefined> {
     return this.users.get(id);
   }
@@ -218,38 +232,38 @@ export class MemStorage implements IStorage {
     this.users.set(id, user);
     return user;
   }
-  
+
   async updateUser(id: number, data: Partial<InsertUser>): Promise<User> {
     const user = this.users.get(id);
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     const updatedUser: User = { ...user, ...data };
     this.users.set(id, updatedUser);
     return updatedUser;
   }
-  
+
   async getUsersByRole(role: string): Promise<User[]> {
     return Array.from(this.users.values())
       .filter(user => user.role === role);
   }
-  
+
   async getUsersByCanteen(canteenId: number): Promise<User[]> {
     return Array.from(this.users.values())
       .filter(user => user.canteenId === canteenId);
   }
-  
+
   // ======== Canteen Methods ========
-  
+
   async getAllCanteens(): Promise<Canteen[]> {
     return Array.from(this.canteens.values());
   }
-  
+
   async getCanteen(id: number): Promise<Canteen | undefined> {
     return this.canteens.get(id);
   }
-  
+
   async createCanteen(canteenData: InsertCanteen): Promise<Canteen> {
     const id = this.canteenIdCounter++;
     const canteen: Canteen = { 
@@ -262,28 +276,28 @@ export class MemStorage implements IStorage {
     this.canteens.set(id, canteen);
     return canteen;
   }
-  
+
   async updateCanteen(id: number, data: Partial<InsertCanteen>): Promise<Canteen> {
     const canteen = this.canteens.get(id);
     if (!canteen) {
       throw new Error("Canteen not found");
     }
-    
+
     const updatedCanteen: Canteen = { ...canteen, ...data };
     this.canteens.set(id, updatedCanteen);
     return updatedCanteen;
   }
-  
+
   async deleteCanteen(id: number): Promise<void> {
     this.canteens.delete(id);
   }
 
   // ======== Menu Item Methods ========
-  
+
   async getAllMenuItems(): Promise<MenuItem[]> {
     return Array.from(this.menuItems.values());
   }
-  
+
   async getMenuItemsByCanteen(canteenId: number): Promise<MenuItem[]> {
     return Array.from(this.menuItems.values())
       .filter(item => item.canteenId === canteenId);
@@ -323,7 +337,7 @@ export class MemStorage implements IStorage {
   }
 
   // ======== Order Methods ========
-  
+
   async getOrder(id: number): Promise<Order | undefined> {
     return this.orders.get(id);
   }
@@ -375,11 +389,11 @@ export class MemStorage implements IStorage {
     return Promise.all(activeOrders.map(order => this.getOrderWithItems(order.id)))
       .then(orders => orders.filter(Boolean) as OrderWithItems[]);
   }
-  
+
   async getActiveOrdersByCanteen(canteenId: number): Promise<OrderWithItems[]> {
     // First get all active orders
     const allActiveOrders = await this.getActiveOrders();
-    
+
     // Filter orders for menu items belonging to this canteen
     return allActiveOrders.filter(order => {
       return order.items.some(item => item.menuItem.canteenId === canteenId);
@@ -395,11 +409,11 @@ export class MemStorage implements IStorage {
     return Promise.all(completedOrders.map(order => this.getOrderWithItems(order.id)))
       .then(orders => orders.filter(Boolean) as OrderWithItems[]);
   }
-  
+
   async getOrderHistoryByCanteen(canteenId: number): Promise<OrderWithItems[]> {
     // First get all completed orders
     const allCompletedOrders = await this.getOrderHistory();
-    
+
     // Filter orders for menu items belonging to this canteen
     return allCompletedOrders.filter(order => {
       return order.items.some(item => item.menuItem.canteenId === canteenId);
@@ -424,12 +438,12 @@ export class MemStorage implements IStorage {
     if (!order) {
       throw new Error("Order not found");
     }
-    
+
     // Validate that status is one of the allowed values
     if (!["received", "preparing", "ready", "completed", "cancelled"].includes(statusValue)) {
       throw new Error("Invalid order status");
     }
-    
+
     const status = statusValue as "received" | "preparing" | "ready" | "completed" | "cancelled";
     const updatedOrder: Order = { ...order, status };
     this.orders.set(id, updatedOrder);
@@ -437,7 +451,7 @@ export class MemStorage implements IStorage {
   }
 
   // ======== Order Item Methods ========
-  
+
   async getOrderItems(orderId: number): Promise<OrderItem[]> {
     return Array.from(this.orderItems.values())
       .filter(item => item.orderId === orderId);
@@ -449,22 +463,22 @@ export class MemStorage implements IStorage {
     this.orderItems.set(id, orderItem);
     return orderItem;
   }
-  
+
   // ======== Inventory Methods ========
-  
+
   async getAllInventoryItems(): Promise<InventoryItem[]> {
     return Array.from(this.inventoryItems.values());
   }
-  
+
   async getInventoryItemsByCanteen(canteenId: number): Promise<InventoryItem[]> {
     return Array.from(this.inventoryItems.values())
       .filter(item => item.canteenId === canteenId);
   }
-  
+
   async getInventoryItem(id: number): Promise<InventoryItem | undefined> {
     return this.inventoryItems.get(id);
   }
-  
+
   async createInventoryItem(itemData: InsertInventoryItem): Promise<InventoryItem> {
     const id = this.inventoryIdCounter++;
     const lastUpdated = new Date();
@@ -476,43 +490,43 @@ export class MemStorage implements IStorage {
     this.inventoryItems.set(id, item);
     return item;
   }
-  
+
   async updateInventoryItem(id: number, data: Partial<InsertInventoryItem>): Promise<InventoryItem> {
     const item = this.inventoryItems.get(id);
     if (!item) {
       throw new Error("Inventory item not found");
     }
-    
+
     const lastUpdated = new Date();
     const updatedItem: InventoryItem = { ...item, ...data, lastUpdated };
     this.inventoryItems.set(id, updatedItem);
     return updatedItem;
   }
-  
+
   async deleteInventoryItem(id: number): Promise<void> {
     this.inventoryItems.delete(id);
   }
-  
+
   async getLowStockItems(canteenId: number): Promise<InventoryItem[]> {
     return Array.from(this.inventoryItems.values())
       .filter(item => item.canteenId === canteenId && item.quantity <= item.reorderLevel);
   }
-  
+
   // ======== Expense Methods ========
-  
+
   async getAllExpenses(): Promise<Expense[]> {
     return Array.from(this.expenses.values());
   }
-  
+
   async getExpensesByCanteen(canteenId: number): Promise<Expense[]> {
     return Array.from(this.expenses.values())
       .filter(expense => expense.canteenId === canteenId);
   }
-  
+
   async getExpense(id: number): Promise<Expense | undefined> {
     return this.expenses.get(id);
   }
-  
+
   async createExpense(expenseData: InsertExpense): Promise<Expense> {
     const id = this.expenseIdCounter++;
     const date = expenseData.date || new Date();
@@ -524,37 +538,37 @@ export class MemStorage implements IStorage {
     this.expenses.set(id, expense);
     return expense;
   }
-  
+
   async updateExpense(id: number, data: Partial<InsertExpense>): Promise<Expense> {
     const expense = this.expenses.get(id);
     if (!expense) {
       throw new Error("Expense not found");
     }
-    
+
     const updatedExpense: Expense = { ...expense, ...data };
     this.expenses.set(id, updatedExpense);
     return updatedExpense;
   }
-  
+
   async deleteExpense(id: number): Promise<void> {
     this.expenses.delete(id);
   }
-  
+
   // ======== Sales Report Methods ========
-  
+
   async getAllSalesReports(): Promise<SalesReport[]> {
     return Array.from(this.salesReports.values());
   }
-  
+
   async getSalesReportsByCanteen(canteenId: number): Promise<SalesReport[]> {
     return Array.from(this.salesReports.values())
       .filter(report => report.canteenId === canteenId);
   }
-  
+
   async getSalesReport(id: number): Promise<SalesReport | undefined> {
     return this.salesReports.get(id);
   }
-  
+
   async createSalesReport(reportData: InsertSalesReport): Promise<SalesReport> {
     const id = this.salesReportIdCounter++;
     const date = reportData.date || new Date();
@@ -566,24 +580,24 @@ export class MemStorage implements IStorage {
     this.salesReports.set(id, report);
     return report;
   }
-  
+
   async updateSalesReport(id: number, data: Partial<InsertSalesReport>): Promise<SalesReport> {
     const report = this.salesReports.get(id);
     if (!report) {
       throw new Error("Sales report not found");
     }
-    
+
     const updatedReport: SalesReport = { ...report, ...data };
     this.salesReports.set(id, updatedReport);
     return updatedReport;
   }
-  
+
   async deleteSalesReport(id: number): Promise<void> {
     this.salesReports.delete(id);
   }
-  
+
   // ======== Initialization Methods ========
-  
+
   private async initializeDefaultCanteens() {
     // Create the three college canteens
     const foodCourtCanteen = await this.createCanteen({
@@ -593,7 +607,7 @@ export class MemStorage implements IStorage {
       imageUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
       isActive: true,
     });
-    
+
     const kuteeraCanteen = await this.createCanteen({
       name: "KUTEERA",
       location: "Kuteera Building",
@@ -601,7 +615,7 @@ export class MemStorage implements IStorage {
       imageUrl: "https://images.unsplash.com/photo-1559305616-3f99cd43e353?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
       isActive: true,
     });
-    
+
     const wakeNBiteCanteen = await this.createCanteen({
       name: "Wake n Bite",
       location: "Campus Center",
@@ -609,7 +623,7 @@ export class MemStorage implements IStorage {
       imageUrl: "https://images.unsplash.com/photo-1521017432531-fbd92d768814?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
       isActive: true,
     });
-    
+
     // Add menu items for Food Court (North and South Indian meals, snacks)
     await this.createMenuItem({
       name: "Butter Chicken",
@@ -620,7 +634,7 @@ export class MemStorage implements IStorage {
       isAvailable: true,
       canteenId: foodCourtCanteen.id,
     });
-    
+
     await this.createMenuItem({
       name: "Dal Makhani",
       description: "Creamy black lentil curry, North Indian style",
@@ -630,7 +644,7 @@ export class MemStorage implements IStorage {
       isAvailable: true,
       canteenId: foodCourtCanteen.id,
     });
-    
+
     await this.createMenuItem({
       name: "Masala Dosa",
       description: "South Indian crispy dosa with potato filling",
@@ -640,7 +654,7 @@ export class MemStorage implements IStorage {
       isAvailable: true,
       canteenId: foodCourtCanteen.id,
     });
-    
+
     await this.createMenuItem({
       name: "Samosa",
       description: "Crispy pastry with spiced potatoes",
@@ -650,7 +664,7 @@ export class MemStorage implements IStorage {
       isAvailable: true,
       canteenId: foodCourtCanteen.id,
     });
-    
+
     // Add menu items for Kuteera
     await this.createMenuItem({
       name: "Veg Fried Rice",
@@ -661,7 +675,7 @@ export class MemStorage implements IStorage {
       isAvailable: true,
       canteenId: kuteeraCanteen.id,
     });
-    
+
     await this.createMenuItem({
       name: "Masala Chai",
       description: "Spiced Indian tea",
@@ -671,7 +685,7 @@ export class MemStorage implements IStorage {
       isAvailable: true,
       canteenId: kuteeraCanteen.id,
     });
-    
+
     // Add menu items for Wake n Bite (bakery and pastry items)
     await this.createMenuItem({
       name: "Chocolate Pastry",
@@ -682,7 +696,7 @@ export class MemStorage implements IStorage {
       isAvailable: true,
       canteenId: wakeNBiteCanteen.id,
     });
-    
+
     await this.createMenuItem({
       name: "Butter Croissant",
       description: "Flaky French butter croissant, freshly baked",
@@ -696,3 +710,38 @@ export class MemStorage implements IStorage {
 }
 
 export const storage = new MemStorage();
+
+// Initialize storage with default data
+export async function initializeStorage() {
+  try {
+    const users = await storage.getAllUsers();
+    if (users.length === 0) {
+      // Create default admin user
+      await storage.createUser({
+        username: "ansh@gmail.com",
+        password: await hashPassword("ansh"),
+        firstName: "Ansh",
+        lastName: "Admin",
+        role: "admin",
+        isAdmin: true,
+      });
+
+      // Create default staff user
+      await storage.createUser({
+        username: "test@gmail.com", 
+        password: await hashPassword("test"),
+        firstName: "Test",
+        lastName: "Staff",
+        role: "staff",
+        isAdmin: false,
+        canteenId: 1,
+      });
+
+      console.log("Default users created");
+    } else {
+      console.log(`Found ${users.length} existing users`);
+    }
+  } catch (error) {
+    console.error("Error initializing storage:", error);
+  }
+}
