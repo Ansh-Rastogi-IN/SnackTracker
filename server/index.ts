@@ -40,7 +40,7 @@ app.use((req, res, next) => {
   // Initialize storage and create default users
   const { initializeStorage } = await import("./storage");
   await initializeStorage();
-  
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

@@ -164,44 +164,8 @@ export class MemStorage implements IStorage {
     // Initialize default data
     this.initializeDefaultCanteens();
 
-    // Add initial admin user
-    this.createUser({
-      username: "ansh@gmail.com",
-      password: "812b2cbbffd29586500e3685427b0da34702b94229216b162da0ffa7c066e55e75cf28298422d0a7e1858321e1d530078197b06fbed16392ac1502dad14beeef.e77ba4ffe8c10951f4c2901b8aaed94f", // "ansh"
-      firstName: "Ansh",
-      lastName: "Admin",
-      role: "admin",
-      isAdmin: true,
-    }).then();
-
-    // Add canteen staff user
-    this.createUser({
-      username: "test@gmail.com",
-      password: "812b2cbbffd29586500e3685427b0da34702b94229216b162da0ffa7c066e55e75cf28298422d0a7e1858321e1d530078197b06fbed16392ac1502dad14beeef.e77ba4ffe8c10951f4c2901b8aaed94f", // "test"
-      firstName: "Test",
-      lastName: "Staff",
-      role: "staff",
-      canteenId: 1,
-    }).then();
-
-    // Add staff users for other canteens
-    this.createUser({
-      username: "kuteera@gmail.com",
-      password: "812b2cbbffd29586500e3685427b0da34702b94229216b162da0ffa7c066e55e75cf28298422d0a7e1858321e1d530078197b06fbed16392ac1502dad14beeef.e77ba4ffe8c10951f4c2901b8aaed94f",
-      firstName: "Kuteera",
-      lastName: "Staff",
-      role: "staff",
-      canteenId: 2,
-    }).then();
-
-    this.createUser({
-      username: "wake@gmail.com",
-      password: "812b2cbbffd29586500e3685427b0da34702b94229216b162da0ffa7c066e55e75cf28298422d0a7e1858321e1d530078197b06fbed16392ac1502dad14beeef.e77ba4ffe8c10951f4c2901b8aaed94f",
-      firstName: "Wake",
-      lastName: "Bite",
-      role: "staff",
-      canteenId: 3,
-    }).then();
+    // Initialize default users with properly hashed passwords
+    this.initializeDefaultUsers();
   }
 
   // ======== User Methods ========
@@ -598,6 +562,51 @@ export class MemStorage implements IStorage {
 
   // ======== Initialization Methods ========
 
+  private async initializeDefaultUsers() {
+    try {
+      // Add initial admin user
+      await this.createUser({
+        username: "ansh@gmail.com",
+        password: await hashPassword("ansh"),
+        firstName: "Ansh",
+        lastName: "Admin",
+        role: "admin",
+        isAdmin: true,
+      });
+
+      // Add canteen staff user
+      await this.createUser({
+        username: "test@gmail.com",
+        password: await hashPassword("test"),
+        firstName: "Test",
+        lastName: "Staff",
+        role: "staff",
+        canteenId: 1,
+      });
+
+      // Add staff users for other canteens
+      await this.createUser({
+        username: "kuteera@gmail.com",
+        password: await hashPassword("kuteera"),
+        firstName: "Kuteera",
+        lastName: "Staff",
+        role: "staff",
+        canteenId: 2,
+      });
+
+      await this.createUser({
+        username: "wake@gmail.com",
+        password: await hashPassword("wake"),
+        firstName: "Wake",
+        lastName: "Bite",
+        role: "staff",
+        canteenId: 3,
+      });
+    } catch (error) {
+      console.error("Error initializing default users:", error);
+    }
+  }
+
   private async initializeDefaultCanteens() {
     // Create the three college canteens
     const foodCourtCanteen = await this.createCanteen({
@@ -710,38 +719,3 @@ export class MemStorage implements IStorage {
 }
 
 export const storage = new MemStorage();
-
-// Initialize storage with default data
-export async function initializeStorage() {
-  try {
-    const users = await storage.getAllUsers();
-    if (users.length === 0) {
-      // Create default admin user
-      await storage.createUser({
-        username: "ansh@gmail.com",
-        password: await hashPassword("ansh"),
-        firstName: "Ansh",
-        lastName: "Admin",
-        role: "admin",
-        isAdmin: true,
-      });
-
-      // Create default staff user
-      await storage.createUser({
-        username: "test@gmail.com", 
-        password: await hashPassword("test"),
-        firstName: "Test",
-        lastName: "Staff",
-        role: "staff",
-        isAdmin: false,
-        canteenId: 1,
-      });
-
-      console.log("Default users created");
-    } else {
-      console.log(`Found ${users.length} existing users`);
-    }
-  } catch (error) {
-    console.error("Error initializing storage:", error);
-  }
-}
