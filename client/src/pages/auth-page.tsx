@@ -67,7 +67,12 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (user) {
-      navigate("/");
+      // Redirect based on user role instead of going to home
+      if (user.isAdmin) {
+        navigate("/admin/orders");
+      } else {
+        navigate("/menu");
+      }
     }
   }, [user, navigate]);
 

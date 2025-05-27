@@ -53,12 +53,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: (userData) => {
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       toast({
         title: "Login successful",
         description: "Welcome back!",
       });
+      
+      // Redirect based on user role
+      if (userData.isAdmin) {
+        setLocation("/admin/orders");
+      } else {
+        setLocation("/menu");
+      }
     },
     onError: (error: any) => {
       console.error("Login failed:", error);
