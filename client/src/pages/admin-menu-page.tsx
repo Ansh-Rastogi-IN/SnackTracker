@@ -21,6 +21,7 @@ import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { getFoodImage } from "@/lib/food-images";
 
 const menuItemFormSchema = insertMenuItemSchema.extend({
   id: z.number().optional(),
@@ -429,11 +430,28 @@ export default function AdminMenuPage() {
             
             <div className="space-y-2">
               <Label htmlFor="imageUrl">Image URL</Label>
-              <Input 
-                id="imageUrl" 
-                placeholder="https://example.com/image.jpg" 
-                {...form.register("imageUrl")} 
-              />
+              <div className="flex gap-2">
+                <Input 
+                  id="imageUrl" 
+                  placeholder="https://example.com/image.jpg" 
+                  {...form.register("imageUrl")} 
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const name = form.getValues("name");
+                    const category = form.getValues("category");
+                    if (name || category) {
+                      form.setValue("imageUrl", getFoodImage(name, category));
+                    }
+                  }}
+                  className="whitespace-nowrap"
+                >
+                  Suggest
+                </Button>
+              </div>
             </div>
             
             <div className="space-y-2">
@@ -534,11 +552,28 @@ export default function AdminMenuPage() {
             
             <div className="space-y-2">
               <Label htmlFor="imageUrl">Image URL</Label>
-              <Input 
-                id="imageUrl" 
-                placeholder="https://example.com/image.jpg" 
-                {...form.register("imageUrl")} 
-              />
+              <div className="flex gap-2">
+                <Input 
+                  id="imageUrl" 
+                  placeholder="https://example.com/image.jpg" 
+                  {...form.register("imageUrl")} 
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const name = form.getValues("name");
+                    const category = form.getValues("category");
+                    if (name || category) {
+                      form.setValue("imageUrl", getFoodImage(name, category));
+                    }
+                  }}
+                  className="whitespace-nowrap"
+                >
+                  Suggest
+                </Button>
+              </div>
             </div>
             
             <div className="space-y-2">

@@ -40,6 +40,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Loader2, Plus, Search, Edit, Trash2 } from "lucide-react";
 import type { MenuItem, InsertMenuItem } from "@shared/schema";
+import { getFoodImage } from "@/lib/food-images";
 
 // Form schema for menu item
 const menuItemFormSchema = z.object({
@@ -217,7 +218,7 @@ export default function StaffMenuPage() {
         <main className="flex flex-grow items-center justify-center p-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </main>
-        {isMobile && <MobileNav activeView="staff-menu" />}
+        {isMobile && <MobileNav activeView="staff-menu" staffMode={true} />}
       </div>
     );
   }
@@ -426,7 +427,24 @@ export default function StaffMenuPage() {
                   <FormItem>
                     <FormLabel>Image URL (Optional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter image URL..." {...field} />
+                      <div className="flex gap-2">
+                        <Input placeholder="Enter image URL..." {...field} />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const name = addForm.getValues("name");
+                            const category = addForm.getValues("category");
+                            if (name || category) {
+                              field.onChange(getFoodImage(name, category));
+                            }
+                          }}
+                          className="whitespace-nowrap"
+                        >
+                          Suggest
+                        </Button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -556,7 +574,24 @@ export default function StaffMenuPage() {
                     <FormItem>
                       <FormLabel>Image URL (Optional)</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter image URL..." {...field} />
+                        <div className="flex gap-2">
+                          <Input placeholder="Enter image URL..." {...field} />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const name = editForm.getValues("name");
+                              const category = editForm.getValues("category");
+                              if (name || category) {
+                                field.onChange(getFoodImage(name, category));
+                              }
+                            }}
+                            className="whitespace-nowrap"
+                          >
+                            Suggest
+                          </Button>
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -596,7 +631,7 @@ export default function StaffMenuPage() {
         </DialogContent>
       </Dialog>
 
-      {isMobile && <MobileNav activeView="staff-menu" adminMode={false} />}
+              {isMobile && <MobileNav activeView="staff-menu" staffMode={true} />}
     </div>
   );
 }

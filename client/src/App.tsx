@@ -13,6 +13,8 @@ import AdminMenuPage from "@/pages/admin-menu-page";
 import StaffOrdersPage from "@/pages/staff-orders-page";
 import StaffInventoryPage from "@/pages/staff-inventory-page";
 import StaffMenuPage from "@/pages/staff-menu-page";
+import StaffExpensesPage from "@/pages/staff-expenses-page";
+import StaffSalesPage from "@/pages/staff-sales-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 
@@ -35,8 +37,8 @@ function Router() {
       <ProtectedRoute path="/staff/orders" component={StaffOrdersPage} roles={["staff"]} />
       <ProtectedRoute path="/staff/inventory" component={StaffInventoryPage} roles={["staff"]} />
       <ProtectedRoute path="/staff/menu" component={StaffMenuPage} roles={["staff"]} />
-      <ProtectedRoute path="/staff/expenses" component={() => <h1>Staff Expense Tracking</h1>} roles={["staff"]} />
-      <ProtectedRoute path="/staff/sales" component={() => <h1>Staff Sales Reporting</h1>} roles={["staff"]} />
+      <ProtectedRoute path="/staff/expenses" component={StaffExpensesPage} roles={["staff"]} />
+      <ProtectedRoute path="/staff/sales" component={StaffSalesPage} roles={["staff"]} />
       
       {/* 404 route */}
       <Route component={NotFound} />

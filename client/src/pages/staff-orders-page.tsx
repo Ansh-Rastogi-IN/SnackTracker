@@ -136,7 +136,7 @@ export default function StaffOrdersPage() {
         <main className="flex flex-grow items-center justify-center p-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </main>
-        {isMobile && <MobileNav activeView="staff-orders" />}
+        {isMobile && <MobileNav activeView="staff-orders" staffMode={true} />}
       </div>
     );
   }
@@ -316,7 +316,7 @@ export default function StaffOrdersPage() {
         </div>
       </main>
       
-      {isMobile && <MobileNav activeView="staff-orders" adminMode={false} />}
+              {isMobile && <MobileNav activeView="staff-orders" staffMode={true} />}
     </div>
   );
 }

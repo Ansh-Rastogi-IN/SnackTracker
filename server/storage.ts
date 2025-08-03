@@ -1,7 +1,27 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import { migrate } from "drizzle-orm/postgres-js/migrator";
-import postgres from "postgres";
-import session from "express-session";
+import session, { Store as SessionStore } from 'express-session';
+import createMemoryStore from 'memorystore';
+import { config } from 'dotenv';
+
+config();
+
+const MemoryStore = createMemoryStore(session);
+
+export const sessionStore = new MemoryStore({
+    checkPeriod: 86400000 // prune expired entries every 24h
+});
+
+export const sessionConfig = session({
+    store: sessionStore,
+    secret: process.env.SESSION_SECRET || 'dev-secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+});
+
 import { eq, and, desc, asc } from "drizzle-orm";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
@@ -32,7 +52,6 @@ import {
   SalesReport,
   InsertSalesReport
 } from "@shared/schema";
-import createMemoryStore from "memorystore";
 
 const scryptAsync = promisify(scrypt);
 
@@ -42,10 +61,10 @@ async function hashPassword(password: string) {
   return `${buf.toString("hex")}.${salt}`;
 }
 
-const MemoryStore = createMemoryStore(session);
-
-// Type for SessionStore since it's not exported from express-session
-type SessionStore = ReturnType<typeof createMemoryStore>;
+export type SessionData = {
+    userId?: string;
+    isAuthenticated?: boolean;
+}
 
 export interface IStorage {
   // User operations
@@ -449,6 +468,8 @@ export class MemStorage implements IStorage {
     const item: InventoryItem = {
       id,
       ...itemData,
+      quantity: itemData.quantity ?? 0,
+      reorderLevel: itemData.reorderLevel ?? 10,
       lastUpdated
     };
     this.inventoryItems.set(id, item);
@@ -539,7 +560,9 @@ export class MemStorage implements IStorage {
     const report: SalesReport = {
       id,
       ...reportData,
-      date
+      date,
+      cashSales: reportData.cashSales ?? 0,
+      onlineSales: reportData.onlineSales ?? 0
     };
     this.salesReports.set(id, report);
     return report;
@@ -633,85 +656,497 @@ export class MemStorage implements IStorage {
       isActive: true,
     });
 
-    // Add menu items for Food Court (North and South Indian meals, snacks)
+    // ===== FOOD COURT MENU =====
+    // 🥗 Veg Snacks
     await this.createMenuItem({
-      name: "Butter Chicken",
-      description: "Classic North Indian butter chicken with rich gravy",
-      price: 180,
-      imageUrl: "https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      name: "Veg Sandwich",
+      description: "Fresh vegetable sandwich with cucumber, tomato, and lettuce",
+      price: 40,
+      imageUrl: "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=400&h=300&fit=crop",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Paneer Puff",
+      description: "Flaky puff pastry filled with spiced paneer",
+      price: 35,
+      imageUrl: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&h=300&fit=crop",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Cheese Maggi",
+      description: "Instant noodles with cheese and vegetables",
+      price: 45,
+      imageUrl: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&h=300&fit=crop",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Aloo Samosa",
+      description: "Crispy samosa with spiced potato filling (2 pieces)",
+      price: 30,
+      imageUrl: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&h=300&fit=crop",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Veg Burger",
+      description: "Vegetable patty burger with fresh vegetables",
+      price: 50,
+      imageUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
+    });
+
+    // 🍗 Non-Veg Snacks
+    await this.createMenuItem({
+      name: "Chicken Puff",
+      description: "Flaky puff pastry filled with spiced chicken",
+      price: 40,
+      imageUrl: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&h=300&fit=crop",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Egg Roll",
+      description: "Scrambled egg wrapped in paratha with vegetables",
+      price: 55,
+      imageUrl: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&h=300&fit=crop",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Chicken Burger",
+      description: "Grilled chicken patty burger with lettuce and mayo",
+      price: 70,
+      imageUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Grilled Chicken Sandwich",
+      description: "Grilled chicken breast sandwich with fresh vegetables",
+      price: 65,
+      imageUrl: "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=400&h=300&fit=crop",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Chicken Maggi",
+      description: "Instant noodles with chicken and vegetables",
+      price: 55,
+      imageUrl: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&h=300&fit=crop",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
+    });
+
+    // 🍽️ Quick Meals
+    await this.createMenuItem({
+      name: "Veg Fried Rice",
+      description: "Stir-fried rice with mixed vegetables and soy sauce",
+      price: 70,
+      imageUrl: "https://images.unsplash.com/photo-1645607173795-8b0e5fadaa68?w=400&h=300&fit=crop",
+      category: "veg",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Chicken Fried Rice",
+      description: "Stir-fried rice with chicken and vegetables",
+      price: 90,
+      imageUrl: "https://images.unsplash.com/photo-1645607173795-8b0e5fadaa68?w=400&h=300&fit=crop",
       category: "nonveg",
       isAvailable: true,
       canteenId: foodCourtCanteen.id,
     });
 
     await this.createMenuItem({
-      name: "Dal Makhani",
-      description: "Creamy black lentil curry, North Indian style",
-      price: 120,
-      imageUrl: "https://images.unsplash.com/photo-1546833998-877b37c2e4c6?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      name: "Paneer Wrap",
+      description: "Paneer tikka wrapped in soft tortilla with chutney",
+      price: 65,
+      imageUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop",
       category: "veg",
       isAvailable: true,
       canteenId: foodCourtCanteen.id,
     });
 
     await this.createMenuItem({
-      name: "Masala Dosa",
-      description: "South Indian crispy dosa with potato filling",
-      price: 90,
-      imageUrl: "https://images.unsplash.com/photo-1624360442384-238602bc5415?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      name: "Chicken Wrap",
+      description: "Grilled chicken wrapped in soft tortilla with sauce",
+      price: 75,
+      imageUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop",
+      category: "nonveg",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Veg Thali",
+      description: "Complete meal with rice, dal, curry, salad, and roti",
+      price: 100,
+      imageUrl: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400&h=300&fit=crop",
       category: "veg",
       isAvailable: true,
       canteenId: foodCourtCanteen.id,
     });
 
+    // 🥤 Beverages
+    await this.createMenuItem({
+      name: "Masala Chai",
+      description: "Spiced Indian tea with milk and ginger",
+      price: 15,
+      imageUrl: "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=400&h=300&fit=crop",
+      category: "beverages",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Cold Coffee",
+      description: "Iced coffee with milk and sugar",
+      price: 40,
+      imageUrl: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&h=300&fit=crop",
+      category: "beverages",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Fresh Lime Soda",
+      description: "Refreshing lime soda with mint and salt",
+      price: 35,
+      imageUrl: "https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=400&h=300&fit=crop",
+      category: "beverages",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Soft Drink",
+      description: "Coke, Sprite, or Pepsi (300ml)",
+      price: 25,
+      imageUrl: "https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=400&h=300&fit=crop",
+      category: "beverages",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Mineral Water",
+      description: "500ml bottled mineral water",
+      price: 20,
+      imageUrl: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&h=300&fit=crop",
+      category: "beverages",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
+    });
+
+    // Snacks
     await this.createMenuItem({
       name: "Samosa",
-      description: "Crispy pastry with spiced potatoes",
+      description: "Crispy pastry with spiced potatoes and peas",
       price: 25,
-      imageUrl: "https://images.unsplash.com/photo-1551024601-bec78aea704b?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      imageUrl: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&h=300&fit=crop",
       category: "snacks",
       isAvailable: true,
       canteenId: foodCourtCanteen.id,
     });
 
-    // Add menu items for Kuteera
+    await this.createMenuItem({
+      name: "Pakora",
+      description: "Crispy fritters with mixed vegetables",
+      price: 30,
+      imageUrl: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&h=300&fit=crop",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
+    });
+
+    // Beverages
+    await this.createMenuItem({
+      name: "Masala Chai",
+      description: "Spiced Indian tea with milk",
+      price: 20,
+      imageUrl: "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=400&h=300&fit=crop",
+      category: "beverages",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Lassi",
+      description: "Sweet yogurt-based drink",
+      price: 40,
+      imageUrl: "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=400&h=300&fit=crop",
+      category: "beverages",
+      isAvailable: true,
+      canteenId: foodCourtCanteen.id,
+    });
+
+    // ===== KUTEERA MENU =====
+    // Quick Meals
     await this.createMenuItem({
       name: "Veg Fried Rice",
       description: "Stir-fried rice with mixed vegetables",
       price: 100,
-      imageUrl: "https://images.unsplash.com/photo-1645607173795-8b0e5fadaa68?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      imageUrl: "https://images.unsplash.com/photo-1645607173795-8b0e5fadaa68?w=400&h=300&fit=crop",
       category: "veg",
       isAvailable: true,
       canteenId: kuteeraCanteen.id,
     });
 
     await this.createMenuItem({
+      name: "Chicken Fried Rice",
+      description: "Stir-fried rice with chicken and vegetables",
+      price: 130,
+      imageUrl: "https://images.unsplash.com/photo-1645607173795-8b0e5fadaa68?w=400&h=300&fit=crop",
+      category: "nonveg",
+      isAvailable: true,
+      canteenId: kuteeraCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Veg Noodles",
+      description: "Stir-fried noodles with vegetables",
+      price: 90,
+      imageUrl: "https://images.unsplash.com/photo-1645607173795-8b0e5fadaa68?w=400&h=300&fit=crop",
+      category: "veg",
+      isAvailable: true,
+      canteenId: kuteeraCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Chicken Noodles",
+      description: "Stir-fried noodles with chicken",
+      price: 120,
+      imageUrl: "https://images.unsplash.com/photo-1645607173795-8b0e5fadaa68?w=400&h=300&fit=crop",
+      category: "nonveg",
+      isAvailable: true,
+      canteenId: kuteeraCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Vada Pav",
+      description: "Mumbai's favorite street food - potato fritter in bread",
+      price: 35,
+      imageUrl: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&h=300&fit=crop",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: kuteeraCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Poha",
+      description: "Flattened rice with onions and spices",
+      price: 45,
+      imageUrl: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&h=300&fit=crop",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: kuteeraCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Upma",
+      description: "Semolina breakfast with vegetables",
+      price: 40,
+      imageUrl: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&h=300&fit=crop",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: kuteeraCanteen.id,
+    });
+
+    // Beverages
+    await this.createMenuItem({
       name: "Masala Chai",
       description: "Spiced Indian tea",
       price: 20,
-      imageUrl: "https://images.unsplash.com/photo-1593722152148-1a8cc62ac2b5?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      imageUrl: "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=400&h=300&fit=crop",
       category: "beverages",
       isAvailable: true,
       canteenId: kuteeraCanteen.id,
     });
 
-    // Add menu items for Wake n Bite (bakery and pastry items)
+    await this.createMenuItem({
+      name: "Coffee",
+      description: "Hot filter coffee",
+      price: 25,
+      imageUrl: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&h=300&fit=crop",
+      category: "beverages",
+      isAvailable: true,
+      canteenId: kuteeraCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Juice",
+      description: "Fresh fruit juice",
+      price: 50,
+      imageUrl: "https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=400&h=300&fit=crop",
+      category: "beverages",
+      isAvailable: true,
+      canteenId: kuteeraCanteen.id,
+    });
+
+    // ===== WAKE N BITE MENU =====
+    // Pastries and Cakes
     await this.createMenuItem({
       name: "Chocolate Pastry",
       description: "Rich chocolate pastry with cream filling",
       price: 60,
-      imageUrl: "https://images.unsplash.com/photo-1614707267537-b85aaf00c4b7?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      imageUrl: "https://images.unsplash.com/photo-1614707267537-b85aaf00c4b7?w=400&h=300&fit=crop",
       category: "snacks",
       isAvailable: true,
       canteenId: wakeNBiteCanteen.id,
     });
 
     await this.createMenuItem({
+      name: "Vanilla Pastry",
+      description: "Light vanilla pastry with fresh cream",
+      price: 55,
+      imageUrl: "https://images.unsplash.com/photo-1614707267537-b85aaf00c4b7?w=400&h=300&fit=crop",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: wakeNBiteCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Chocolate Cake",
+      description: "Moist chocolate cake with chocolate ganache",
+      price: 80,
+      imageUrl: "https://images.unsplash.com/photo-1614707267537-b85aaf00c4b7?w=400&h=300&fit=crop",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: wakeNBiteCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Red Velvet Cake",
+      description: "Classic red velvet cake with cream cheese frosting",
+      price: 90,
+      imageUrl: "https://images.unsplash.com/photo-1614707267537-b85aaf00c4b7?w=400&h=300&fit=crop",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: wakeNBiteCanteen.id,
+    });
+
+    // Breads and Croissants
+    await this.createMenuItem({
       name: "Butter Croissant",
       description: "Flaky French butter croissant, freshly baked",
       price: 50,
-      imageUrl: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60",
+      imageUrl: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&h=300&fit=crop",
       category: "snacks",
+      isAvailable: true,
+      canteenId: wakeNBiteCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Chocolate Croissant",
+      description: "Buttery croissant filled with chocolate",
+      price: 65,
+      imageUrl: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&h=300&fit=crop",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: wakeNBiteCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Garlic Bread",
+      description: "Toasted bread with garlic butter and herbs",
+      price: 45,
+      imageUrl: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&h=300&fit=crop",
+      category: "snacks",
+      isAvailable: true,
+      canteenId: wakeNBiteCanteen.id,
+    });
+
+    // Hot Beverages
+    await this.createMenuItem({
+      name: "Cappuccino",
+      description: "Espresso with steamed milk and foam",
+      price: 70,
+      imageUrl: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&h=300&fit=crop",
+      category: "beverages",
+      isAvailable: true,
+      canteenId: wakeNBiteCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Latte",
+      description: "Espresso with steamed milk",
+      price: 75,
+      imageUrl: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&h=300&fit=crop",
+      category: "beverages",
+      isAvailable: true,
+      canteenId: wakeNBiteCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Hot Chocolate",
+      description: "Rich hot chocolate with whipped cream",
+      price: 60,
+      imageUrl: "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=400&h=300&fit=crop",
+      category: "beverages",
+      isAvailable: true,
+      canteenId: wakeNBiteCanteen.id,
+    });
+
+    // Cold Beverages
+    await this.createMenuItem({
+      name: "Iced Coffee",
+      description: "Chilled coffee with milk and ice",
+      price: 65,
+      imageUrl: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&h=300&fit=crop",
+      category: "beverages",
+      isAvailable: true,
+      canteenId: wakeNBiteCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Cold Coffee",
+      description: "Blended coffee with ice cream",
+      price: 80,
+      imageUrl: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&h=300&fit=crop",
+      category: "beverages",
+      isAvailable: true,
+      canteenId: wakeNBiteCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Soda",
+      description: "Refreshing carbonated drink",
+      price: 30,
+      imageUrl: "https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=400&h=300&fit=crop",
+      category: "beverages",
+      isAvailable: true,
+      canteenId: wakeNBiteCanteen.id,
+    });
+
+    await this.createMenuItem({
+      name: "Water",
+      description: "Mineral water",
+      price: 20,
+      imageUrl: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&h=300&fit=crop",
+      category: "beverages",
       isAvailable: true,
       canteenId: wakeNBiteCanteen.id,
     });

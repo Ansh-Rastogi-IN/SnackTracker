@@ -6,13 +6,15 @@ interface MobileNavProps {
   cartItemsCount?: number;
   onCartClick?: () => void;
   adminMode?: boolean;
+  staffMode?: boolean;
 }
 
 export default function MobileNav({ 
   activeView, 
   cartItemsCount = 0, 
   onCartClick,
-  adminMode = false
+  adminMode = false,
+  staffMode = false
 }: MobileNavProps) {
   const [location, setLocation] = useLocation();
   
@@ -26,7 +28,7 @@ export default function MobileNav({
 
   return (
     <div className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-neutral-200 z-10">
-      {!adminMode ? (
+      {!adminMode && !staffMode ? (
         <div className="grid grid-cols-4 h-16">
           <button 
             onClick={() => handleNavClick("/menu")} 
@@ -67,6 +69,48 @@ export default function MobileNav({
           >
             <User className="h-5 w-5" />
             <span className="text-xs mt-1">Account</span>
+          </button>
+        </div>
+      ) : staffMode ? (
+        <div className="grid grid-cols-4 h-16">
+          <button 
+            onClick={() => handleNavClick("/staff/orders")} 
+            className={`flex flex-col items-center justify-center ${
+              activeView === "staff-orders" ? "text-primary" : "text-neutral-400"
+            }`}
+          >
+            <ClipboardList className="h-5 w-5" />
+            <span className="text-xs mt-1">Orders</span>
+          </button>
+          
+          <button 
+            onClick={() => handleNavClick("/staff/menu")} 
+            className={`flex flex-col items-center justify-center ${
+              activeView === "staff-menu" ? "text-primary" : "text-neutral-400"
+            }`}
+          >
+            <i className="ri-restaurant-line text-xl"></i>
+            <span className="text-xs mt-1">Menu</span>
+          </button>
+          
+          <button 
+            onClick={() => handleNavClick("/staff/expenses")} 
+            className={`flex flex-col items-center justify-center ${
+              activeView === "expenses" ? "text-primary" : "text-neutral-400"
+            }`}
+          >
+            <AlertCircle className="h-5 w-5" />
+            <span className="text-xs mt-1">Expenses</span>
+          </button>
+          
+          <button 
+            onClick={() => handleNavClick("/staff/sales")} 
+            className={`flex flex-col items-center justify-center ${
+              activeView === "sales" ? "text-primary" : "text-neutral-400"
+            }`}
+          >
+            <User className="h-5 w-5" />
+            <span className="text-xs mt-1">Sales</span>
           </button>
         </div>
       ) : (

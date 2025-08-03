@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MenuItem } from "@shared/schema";
+import { getFoodImage } from "@/lib/food-images";
 
 interface MenuCardProps {
   item: MenuItem;
@@ -41,28 +42,22 @@ export default function MenuCard({ item, onAddToCart, compact = false }: MenuCar
     }
   };
 
-  // Fallback images based on category
-  const getFallbackImage = (category: string) => {
-    switch(category) {
-      case 'veg':
-        return "https://images.unsplash.com/photo-1623238913327-121b8a7e7b93?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60";
-      case 'nonveg':
-        return "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60";
-      case 'snacks':
-        return "https://images.unsplash.com/photo-1551024601-bec78aea704b?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60";
-      case 'beverages':
-        return "https://images.unsplash.com/photo-1534353473418-4cfa6c56fd38?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60";
-      default:
-        return "https://images.unsplash.com/photo-1613844237701-8f3664fc2eff?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60";
-    }
+  // Get food image using our configuration
+  const getFoodImageUrl = (item: MenuItem) => {
+    return getFoodImage(item.name, item.category);
   };
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300 h-full">
       <img 
-        src={item.imageUrl || getFallbackImage(item.category)} 
+        src={item.imageUrl || getFoodImageUrl(item)} 
         alt={item.name}
         className={`w-full object-cover ${compact ? 'h-40' : 'h-48'}`}
+        onError={(e) => {
+          // Fallback to category image if specific image fails
+          const target = e.target as HTMLImageElement;
+          target.src = getFoodImage(item.category);
+        }}
       />
       <CardContent className={`p-4 ${compact ? 'space-y-2' : 'space-y-3'}`}>
         <div className="flex justify-between items-start">

@@ -210,7 +210,7 @@ export default function StaffInventoryPage() {
         <main className="flex flex-grow items-center justify-center p-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </main>
-        {isMobile && <MobileNav activeView="staff-inventory" />}
+        {isMobile && <MobileNav activeView="staff-inventory" staffMode={true} />}
       </div>
     );
   }
@@ -545,7 +545,7 @@ export default function StaffInventoryPage() {
         </DialogContent>
       </Dialog>
       
-      {isMobile && <MobileNav activeView="staff-inventory" adminMode={false} />}
+              {isMobile && <MobileNav activeView="staff-inventory" staffMode={true} />}
     </div>
   );
 }

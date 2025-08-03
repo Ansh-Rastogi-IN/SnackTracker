@@ -1,49 +1,49 @@
-
 import { useAuth } from "@/hooks/use-auth";
-import { ReactNode } from "react";
-import { Redirect } from "wouter";
+import { Route, Redirect } from "wouter";
+import { ComponentType } from "react";
 
 interface ProtectedRouteProps {
-  children: ReactNode;
-  requireAuth?: boolean;
-  requireAdmin?: boolean;
-  requireRole?: string;
+  component: ComponentType<any>;
+  path?: string;
+  roles?: string[];
 }
 
 export function ProtectedRoute({ 
-  children, 
-  requireAuth = true, 
-  requireAdmin = false, 
-  requireRole 
+  component: Component,
+  path,
+  roles = []
 }: ProtectedRouteProps) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, hasRole } = useAuth();
 
-  // Show loading state while checking auth
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  return (
+    <Route
+      path={path}
+      component={(props: any) => {
+        // Show loading state while checking auth
+        if (isLoading) {
+          return (
+            <div className="flex items-center justify-center min-h-screen">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading...</p>
+              </div>
+            </div>
+          );
+        }
 
-  // Check authentication requirement
-  if (requireAuth && !user) {
-    return <Redirect to="/auth" />;
-  }
+        // Check authentication
+        if (!user) {
+          return <Redirect to="/auth" />;
+        }
 
-  // Check admin requirement
-  if (requireAdmin && (!user || !user.isAdmin)) {
-    return <Redirect to="/menu" />;
-  }
+        // Check role requirements
+        if (roles.length > 0 && !hasRole(roles)) {
+          return <Redirect to="/menu" />;
+        }
 
-  // Check specific role requirement
-  if (requireRole && (!user || user.role !== requireRole)) {
-    return <Redirect to="/menu" />;
-  }
-
-  return <>{children}</>;
+        // Render component if all checks pass
+        return <Component {...props} />;
+      }}
+    />
+  );
 }

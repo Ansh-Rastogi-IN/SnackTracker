@@ -58,7 +58,8 @@ export default function OrdersPage() {
   // Mutation to reorder
   const reorderMutation = useMutation({
     mutationFn: async (orderId: number) => {
-      await apiRequest("POST", `/api/orders/${orderId}/reorder`);
+      const response = await apiRequest("POST", `/api/orders/${orderId}/reorder`);
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/orders/active"] });
