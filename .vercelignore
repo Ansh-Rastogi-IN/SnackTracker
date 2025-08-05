@@ -1,5 +1,4 @@
 server/
-shared/
 migrations/
 scripts/
 *.md
