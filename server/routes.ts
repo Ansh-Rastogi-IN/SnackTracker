@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, requireRole, isAuthenticated } from "./auth";
@@ -10,6 +10,8 @@ import {
   OrderWithItems 
 } from "@shared/schema";
 import { z } from "zod";
+
+
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up auth routes
