@@ -4,8 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "cross-env NODE_ENV=development tsx watch server/index.ts",
-    "build": "tsc && vite build",
-    "start": "cross-env NODE_ENV=production node dist/server/index.js",
+    "build": "vite build",
+    "build:server": "tsc -p tsconfig.server.json",
+    "start": "cross-env NODE_ENV=production tsx server/index.ts",
     "db:generate": "drizzle-kit generate:pg",
     "db:push": "tsx scripts/db-push.ts"
   },
