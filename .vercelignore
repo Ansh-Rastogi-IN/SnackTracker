@@ -1,0 +1,7 @@
+server/
+shared/
+migrations/
+scripts/
+*.md
+.env
+.env.local 
