@@ -2,6 +2,8 @@ import { useState } from "react";
 import Header from "@/components/header";
 import MobileNav from "@/components/mobile-nav";
 import OrderStatus from "@/components/order-status";
+import OrderTracking from "@/components/order-tracking";
+import OrderRating from "@/components/order-rating";
 import { useQuery } from "@tanstack/react-query";
 import { Order, OrderWithItems } from "@shared/schema";
 import { useMutation } from "@tanstack/react-query";
@@ -15,14 +17,18 @@ import { AlertCircle, Loader2 } from "lucide-react";
 
 export default function OrdersPage() {
   const [cartItems, setCartItems] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const { toast } = useToast();
 
-  // Fetch active order if exists
+  // Fetch active order if exists with real-time updates
   const { 
     data: activeOrder,
     isLoading: isLoadingActive
   } = useQuery<OrderWithItems | null>({
     queryKey: ["/api/orders/active"],
+    refetchInterval: 3000, // Refresh every 3 seconds for real-time updates
+    refetchIntervalInBackground: true,
   });
 
   // Fetch order history
@@ -31,6 +37,8 @@ export default function OrdersPage() {
     isLoading: isLoadingHistory
   } = useQuery<OrderWithItems[]>({
     queryKey: ["/api/orders/history"],
+    refetchInterval: 5000, // Refresh every 5 seconds
+    refetchIntervalInBackground: true,
   });
 
   // Mutation to mark an order as completed
@@ -78,6 +86,28 @@ export default function OrdersPage() {
     },
   });
 
+  // Mutation to cancel order
+  const cancelOrderMutation = useMutation({
+    mutationFn: async (orderId: number) => {
+      await apiRequest("POST", `/api/orders/${orderId}/cancel`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orders/active"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders/history"] });
+      toast({
+        title: "Order cancelled",
+        description: "Your order has been cancelled successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const isLoading = isLoadingActive || isLoadingHistory;
 
   return (
@@ -85,7 +115,32 @@ export default function OrdersPage() {
       <Header cartItemsCount={cartItems.length} />
       
       <main className="container mx-auto px-4 py-6 flex-grow">
-        <h2 className="text-2xl font-poppins font-semibold mb-6">Your Orders</h2>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <h2 className="text-2xl font-poppins font-semibold">Your Orders</h2>
+          
+          {/* Search and Filter Controls */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="text"
+              placeholder="Search orders..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            >
+              <option value="all">All Status</option>
+              <option value="received">Received</option>
+              <option value="preparing">Preparing</option>
+              <option value="ready">Ready</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+        </div>
         
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
@@ -106,17 +161,7 @@ export default function OrdersPage() {
                           Placed at {format(new Date(activeOrder.createdAt), "hh:mm a")}
                         </p>
                       </div>
-                      <Badge 
-                        className={`
-                          ${activeOrder.status === 'received' ? 'bg-status-received' : 
-                            activeOrder.status === 'preparing' ? 'bg-status-preparing' : 
-                            'bg-status-ready'}
-                        `}
-                      >
-                        {activeOrder.status === 'received' ? 'Order Received' : 
-                         activeOrder.status === 'preparing' ? 'Preparing' : 
-                         'Ready for Pickup'}
-                      </Badge>
+                      <OrderStatus status={activeOrder.status} showIcon={false} />
                     </div>
                     
                     <div className="space-y-2 mb-4">
@@ -130,17 +175,33 @@ export default function OrdersPage() {
                     
                     <OrderStatus status={activeOrder.status} />
                     
+                    {/* Order Tracking Timeline */}
+                    <OrderTracking status={activeOrder.status} createdAt={activeOrder.createdAt} />
+                    
                     <div className="flex justify-between items-center border-t border-neutral-200 pt-4 mt-4">
                       <p className="font-medium">Total: ₹{activeOrder.totalAmount}</p>
-                      {activeOrder.status === 'ready' && (
-                        <Button 
-                          onClick={() => completeOrderMutation.mutate(activeOrder.id)}
-                          disabled={completeOrderMutation.isPending}
-                          className="text-sm bg-accent hover:bg-green-600"
-                        >
-                          {completeOrderMutation.isPending ? "Processing..." : "Picked Up"}
-                        </Button>
-                      )}
+                      <div className="flex gap-2">
+                        {(activeOrder.status === 'received' || activeOrder.status === 'preparing') && (
+                          <Button 
+                            onClick={() => cancelOrderMutation.mutate(activeOrder.id)}
+                            disabled={cancelOrderMutation.isPending}
+                            variant="outline"
+                            size="sm"
+                            className="text-sm border-red-200 text-red-600 hover:bg-red-50"
+                          >
+                            {cancelOrderMutation.isPending ? "Cancelling..." : "Cancel Order"}
+                          </Button>
+                        )}
+                        {activeOrder.status === 'ready' && (
+                          <Button 
+                            onClick={() => completeOrderMutation.mutate(activeOrder.id)}
+                            disabled={completeOrderMutation.isPending}
+                            className="text-sm bg-accent hover:bg-green-600"
+                          >
+                            {completeOrderMutation.isPending ? "Processing..." : "Picked Up"}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -152,7 +213,21 @@ export default function OrdersPage() {
               <div>
                 <h3 className="text-lg font-medium mb-4">Past Orders</h3>
                 <div className="space-y-4">
-                  {orderHistory.map(order => (
+                  {orderHistory
+                    .filter(order => {
+                      // Search filter
+                      const searchMatch = searchTerm === "" || 
+                        order.id.toString().includes(searchTerm) ||
+                        order.items.some(item => 
+                          item.menuItem.name.toLowerCase().includes(searchTerm.toLowerCase())
+                        );
+                      
+                      // Status filter
+                      const statusMatch = statusFilter === "all" || order.status === statusFilter;
+                      
+                      return searchMatch && statusMatch;
+                    })
+                    .map(order => (
                     <Card key={order.id}>
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between mb-4">
@@ -188,13 +263,13 @@ export default function OrdersPage() {
                             >
                               Reorder
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-sm border border-primary text-primary hover:bg-primary hover:bg-opacity-10"
-                            >
-                              Rate Order
-                            </Button>
+                            {order.status === 'completed' && (
+                              <OrderRating 
+                                orderId={order.id}
+                                currentRating={order.rating?.rating}
+                                currentComment={order.rating?.comment}
+                              />
+                            )}
                           </div>
                         </div>
                       </CardContent>

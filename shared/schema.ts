@@ -208,7 +208,29 @@ export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type SalesReport = typeof salesReports.$inferSelect;
 export type InsertSalesReport = z.infer<typeof insertSalesReportSchema>;
 
+// Order ratings schema
+export const orderRatings = pgTable("order_ratings", {
+  id: serial("id").primaryKey(),
+  orderId: integer("order_id").notNull(),
+  userId: integer("user_id").notNull(),
+  rating: integer("rating").notNull(), // 1-5 stars
+  comment: text("comment"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertOrderRatingSchema = createInsertSchema(orderRatings).pick({
+  orderId: true,
+  userId: true,
+  rating: true,
+  comment: true,
+});
+
+// Type definitions
+export type OrderRating = typeof orderRatings.$inferSelect;
+export type InsertOrderRating = z.infer<typeof insertOrderRatingSchema>;
+
 // For the complete order view
 export type OrderWithItems = Order & {
   items: (OrderItem & { menuItem: MenuItem })[];
+  rating?: OrderRating;
 };

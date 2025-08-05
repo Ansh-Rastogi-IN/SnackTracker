@@ -93,6 +93,19 @@ export default function Header({ cartItemsCount = 0, onCartClick }: HeaderProps)
                   </Link>
                 )}
                 
+                {/* Quick Switch Button for Admin Users */}
+                {user.isAdmin && (
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    className="text-xs px-3 py-1"
+                    onClick={isAdmin ? switchToUser : switchToAdmin}
+                  >
+                    <i className={`ri-${isAdmin ? 'user' : 'admin'}-line mr-1`}></i>
+                    {isAdmin ? 'Customer' : 'Admin'}
+                  </Button>
+                )}
+                
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="flex items-center space-x-2">

@@ -205,6 +205,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Cancel an order
+  app.post("/api/orders/:id/cancel", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "You must be logged in to cancel orders" });
+      }
+
+      const orderId = parseInt(req.params.id);
+      const order = await storage.getOrder(orderId);
+
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      if (order.userId !== req.user.id) {
+        return res.status(403).json({ message: "You can only cancel your own orders" });
+      }
+
+      // Only allow cancellation if order is still in received or preparing status
+      if (order.status === "ready" || order.status === "completed" || order.status === "cancelled") {
+        return res.status(400).json({ 
+          message: `Cannot cancel order that is ${order.status}. Only orders that are received or preparing can be cancelled.` 
+        });
+      }
+
+      const updatedOrder = await storage.updateOrderStatus(orderId, "cancelled");
+      res.json(updatedOrder);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Rate an order
+  app.post("/api/orders/:id/rate", async (req, res, next) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "You must be logged in to rate orders" });
+      }
+
+      const orderId = parseInt(req.params.id);
+      const order = await storage.getOrder(orderId);
+
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      if (order.userId !== req.user.id) {
+        return res.status(403).json({ message: "You can only rate your own orders" });
+      }
+
+      // Only allow rating completed orders
+      if (order.status !== "completed") {
+        return res.status(400).json({ 
+          message: "You can only rate completed orders" 
+        });
+      }
+
+      const { rating, comment } = req.body;
+
+      if (!rating || rating < 1 || rating > 5) {
+        return res.status(400).json({ 
+          message: "Rating must be between 1 and 5" 
+        });
+      }
+
+      const ratingData = {
+        orderId,
+        userId: req.user.id,
+        rating,
+        comment: comment || null,
+      };
+
+      const orderRating = await storage.createOrderRating(ratingData);
+      res.status(201).json(orderRating);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   // ======== Admin API Routes ========
   
   // Admin middleware to check if user is admin
@@ -332,6 +411,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete all menu items (admin)
+  app.delete("/api/admin/menu-items", isAdmin, async (req, res, next) => {
+    try {
+      await storage.deleteAllMenuItems();
+      res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
+  });
+
   // Get active orders (admin)
   app.get("/api/admin/orders/active", isAdmin, async (req, res, next) => {
     try {
@@ -351,6 +440,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       next(err);
     }
   });
+
+
 
   // Update order status (admin)
   app.post("/api/admin/orders/:id/status", isAdmin, async (req, res, next) => {
@@ -669,6 +760,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const salesReport = await storage.createSalesReport(reportData);
       res.status(201).json(salesReport);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Create menu item for a specific canteen
+  app.post("/api/canteens/:id/menu-items", async (req, res, next) => {
+    try {
+      const canteenId = parseInt(req.params.id);
+      const canteen = await storage.getCanteen(canteenId);
+      if (!canteen) {
+        return res.status(404).json({ message: "Canteen not found" });
+      }
+      const menuItemData = { ...req.body, canteenId };
+      const menuItem = await storage.createMenuItem(menuItemData);
+      res.status(201).json(menuItem);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Update menu item for a specific canteen
+  app.patch("/api/canteens/:id/menu-items/:itemId", async (req, res, next) => {
+    try {
+      const canteenId = parseInt(req.params.id);
+      const itemId = parseInt(req.params.itemId);
+      const canteen = await storage.getCanteen(canteenId);
+      if (!canteen) {
+        return res.status(404).json({ message: "Canteen not found" });
+      }
+      const menuItem = await storage.getMenuItem(itemId);
+      if (!menuItem || menuItem.canteenId !== canteenId) {
+        return res.status(404).json({ message: "Menu item not found for this canteen" });
+      }
+      const updatedMenuItem = await storage.updateMenuItem(itemId, req.body);
+      res.json(updatedMenuItem);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Delete menu item for a specific canteen
+  app.delete("/api/canteens/:id/menu-items/:itemId", async (req, res, next) => {
+    try {
+      const canteenId = parseInt(req.params.id);
+      const itemId = parseInt(req.params.itemId);
+      const canteen = await storage.getCanteen(canteenId);
+      if (!canteen) {
+        return res.status(404).json({ message: "Canteen not found" });
+      }
+      const menuItem = await storage.getMenuItem(itemId);
+      if (!menuItem || menuItem.canteenId !== canteenId) {
+        return res.status(404).json({ message: "Menu item not found for this canteen" });
+      }
+      await storage.deleteMenuItem(itemId);
+      res.status(204).send();
     } catch (err) {
       next(err);
     }

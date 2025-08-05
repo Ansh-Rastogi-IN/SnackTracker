@@ -2,6 +2,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
 import * as dotenv from 'dotenv';
+import { storage } from '../server/storage';
 
 dotenv.config();
 
@@ -22,4 +23,9 @@ main().catch((err) => {
   console.error('Migration failed!');
   console.error(err);
   process.exit(1);
-}); 
+});
+
+(async () => {
+  await storage.deleteAllMenuItems();
+  console.log('All canteen menu items deleted.');
+})(); 

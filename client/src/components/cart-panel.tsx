@@ -30,6 +30,11 @@ export default function CartPanel({
   const [, setLocation] = useLocation();
   const [isMounted, setIsMounted] = useState(false);
 
+  // Debug: Log cart panel props
+  console.log("CartPanel - isOpen:", isOpen);
+  console.log("CartPanel - items:", items);
+  console.log("CartPanel - items.length:", items.length);
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -53,13 +58,20 @@ export default function CartPanel({
       return await res.json();
     },
     onSuccess: () => {
+      // Invalidate customer queries
       queryClient.invalidateQueries({ queryKey: ["/api/orders/active"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders/history"] });
+      
+      // Invalidate admin queries for real-time updates
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/orders/active"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/orders/history"] });
+      
       onClose();
       onClearCart();
       setLocation("/orders");
       toast({
         title: "Order placed",
-        description: "Your order has been successfully placed.",
+        description: "Your order has been successfully placed and is being processed.",
       });
     },
     onError: (error) => {

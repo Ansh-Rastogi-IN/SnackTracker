@@ -50,6 +50,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error.message.includes('401')) {
           throw new Error('Invalid username or password');
         }
+        if (error.message.includes('400')) {
+          throw new Error('Username and password are required');
+        }
+        if (error.message.includes('500')) {
+          throw new Error('Server error. Please try again later.');
+        }
         throw error;
       }
     },
@@ -104,7 +110,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
-      queryClient.setQueryData(["/api/user"], null);
+      // Clear all query cache to ensure clean state
+      queryClient.clear();
       setIsAdmin(false);
       setLocation("/auth");
       toast({
@@ -113,10 +120,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
     onError: (error: Error) => {
+      // Even if logout fails on server, clear client state
+      queryClient.setQueryData(["/api/user"], null);
+      setIsAdmin(false);
+      setLocation("/auth");
       toast({
-        title: "Logout failed",
-        description: error.message,
-        variant: "destructive",
+        title: "Logged out",
+        description: "You have been logged out locally.",
       });
     },
   });
@@ -125,12 +135,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user?.isAdmin) {
       setIsAdmin(true);
       setLocation("/admin/orders");
+      toast({
+        title: "Switched to Admin View",
+        description: "You're now viewing the admin interface.",
+      });
     }
   };
 
   const switchToUser = () => {
     setIsAdmin(false);
     setLocation("/menu");
+    toast({
+      title: "Switched to Customer View",
+      description: "You're now viewing the customer interface.",
+    });
   };
 
   // Function to check if user has a specific role or any of the roles provided in an array

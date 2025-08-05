@@ -34,6 +34,7 @@ import {
   inventoryItems,
   expenses,
   salesReports,
+  orderRatings,
   User, 
   InsertUser,
   Canteen,
@@ -50,7 +51,9 @@ import {
   Expense,
   InsertExpense,
   SalesReport,
-  InsertSalesReport
+  InsertSalesReport,
+  OrderRating,
+  InsertOrderRating
 } from "@shared/schema";
 
 const scryptAsync = promisify(scrypt);
@@ -131,6 +134,12 @@ export interface IStorage {
   updateSalesReport(id: number, data: Partial<InsertSalesReport>): Promise<SalesReport>;
   deleteSalesReport(id: number): Promise<void>;
 
+  // Order rating operations
+  getOrderRating(orderId: number): Promise<OrderRating | undefined>;
+  createOrderRating(rating: InsertOrderRating): Promise<OrderRating>;
+  updateOrderRating(id: number, data: Partial<InsertOrderRating>): Promise<OrderRating>;
+  deleteOrderRating(id: number): Promise<void>;
+
   // Session store
   sessionStore: SessionStore;
 }
@@ -144,6 +153,7 @@ export class MemStorage implements IStorage {
   private inventoryItems: Map<number, InventoryItem>;
   private expenses: Map<number, Expense>;
   private salesReports: Map<number, SalesReport>;
+  private orderRatings: Map<number, OrderRating>;
 
   // Auto incrementing IDs
   private userIdCounter: number;
@@ -154,6 +164,7 @@ export class MemStorage implements IStorage {
   private inventoryIdCounter: number;
   private expenseIdCounter: number;
   private salesReportIdCounter: number;
+  private orderRatingIdCounter: number;
 
   public sessionStore: SessionStore;
 
@@ -166,6 +177,7 @@ export class MemStorage implements IStorage {
     this.inventoryItems = new Map();
     this.expenses = new Map();
     this.salesReports = new Map();
+    this.orderRatings = new Map();
 
     this.userIdCounter = 1;
     this.canteenIdCounter = 1;
@@ -175,6 +187,7 @@ export class MemStorage implements IStorage {
     this.inventoryIdCounter = 1;
     this.expenseIdCounter = 1;
     this.salesReportIdCounter = 1;
+    this.orderRatingIdCounter = 1;
 
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000, // 24 hours
@@ -185,6 +198,7 @@ export class MemStorage implements IStorage {
 
     // Initialize default users with properly hashed passwords
     this.initializeDefaultUsers();
+    // this.initializeDefaultMenuItems(); // Disabled to prevent default items from being re-added
   }
 
   // ======== User Methods ========
@@ -319,6 +333,10 @@ export class MemStorage implements IStorage {
     this.menuItems.delete(id);
   }
 
+  async deleteAllMenuItems(): Promise<void> {
+    this.menuItems.clear();
+  }
+
   // ======== Order Methods ========
 
   async getOrder(id: number): Promise<Order | undefined> {
@@ -340,7 +358,10 @@ export class MemStorage implements IStorage {
       return { ...item, menuItem };
     }));
 
-    return { ...order, items };
+    // Get rating for this order
+    const rating = await this.getOrderRating(id);
+
+    return { ...order, items, rating };
   }
 
   async getActiveOrderForUser(userId: number): Promise<OrderWithItems | null> {
@@ -1150,6 +1171,44 @@ export class MemStorage implements IStorage {
       isAvailable: true,
       canteenId: wakeNBiteCanteen.id,
     });
+  }
+
+  // ======== Order Rating Methods ========
+
+  async getOrderRating(orderId: number): Promise<OrderRating | undefined> {
+    return Array.from(this.orderRatings.values()).find(
+      (rating) => rating.orderId === orderId
+    );
+  }
+
+  async createOrderRating(ratingData: InsertOrderRating): Promise<OrderRating> {
+    const id = this.orderRatingIdCounter++;
+    const rating: OrderRating = {
+      id,
+      ...ratingData,
+      comment: ratingData.comment || null,
+      createdAt: new Date(),
+    };
+    this.orderRatings.set(id, rating);
+    return rating;
+  }
+
+  async updateOrderRating(id: number, data: Partial<InsertOrderRating>): Promise<OrderRating> {
+    const rating = this.orderRatings.get(id);
+    if (!rating) {
+      throw new Error("Order rating not found");
+    }
+
+    const updatedRating: OrderRating = { ...rating, ...data };
+    this.orderRatings.set(id, updatedRating);
+    return updatedRating;
+  }
+
+  async deleteOrderRating(id: number): Promise<void> {
+    if (!this.orderRatings.has(id)) {
+      throw new Error("Order rating not found");
+    }
+    this.orderRatings.delete(id);
   }
 }
 

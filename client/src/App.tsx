@@ -15,8 +15,10 @@ import StaffInventoryPage from "@/pages/staff-inventory-page";
 import StaffMenuPage from "@/pages/staff-menu-page";
 import StaffExpensesPage from "@/pages/staff-expenses-page";
 import StaffSalesPage from "@/pages/staff-sales-page";
+import TestDashboard from "@/pages/test-dashboard";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
+import { CartProvider } from "./contexts/cart-context";
 
 function Router() {
   return (
@@ -32,6 +34,7 @@ function Router() {
       {/* Admin routes */}
       <ProtectedRoute path="/admin/orders" component={AdminOrdersPage} roles={["admin"]} />
       <ProtectedRoute path="/admin/menu" component={AdminMenuPage} roles={["admin"]} />
+      <ProtectedRoute path="/test" component={TestDashboard} roles={["admin"]} />
       
       {/* Staff routes */}
       <ProtectedRoute path="/staff/orders" component={StaffOrdersPage} roles={["staff"]} />
@@ -50,10 +53,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <CartProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </CartProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

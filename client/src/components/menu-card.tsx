@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MenuItem } from "@shared/schema";
 import { getFoodImage } from "@/lib/food-images";
+import { Check } from "lucide-react";
 
 interface MenuCardProps {
   item: MenuItem;
@@ -11,6 +13,28 @@ interface MenuCardProps {
 }
 
 export default function MenuCard({ item, onAddToCart, compact = false }: MenuCardProps) {
+  const [isAdding, setIsAdding] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  const handleAddToCart = async () => {
+    if (isAdding) return;
+    
+    console.log("MenuCard handleAddToCart called for item:", item);
+    
+    setIsAdding(true);
+    setShowSuccess(false);
+    
+    // Simulate a small delay for better UX
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    console.log("Calling onAddToCart for item:", item);
+    onAddToCart();
+    setShowSuccess(true);
+    setIsAdding(false);
+    
+    // Hide success state after 1.5 seconds
+    setTimeout(() => setShowSuccess(false), 1500);
+  };
   const getCategoryBadge = (category: string) => {
     switch(category) {
       case 'veg':
@@ -74,11 +98,27 @@ export default function MenuCard({ item, onAddToCart, compact = false }: MenuCar
           <span className="font-medium text-neutral-500">₹{item.price}</span>
           <Button 
             size={compact ? "sm" : "default"}
-            className="bg-primary text-white hover:bg-orange-600 rounded-full"
-            onClick={onAddToCart}
-            disabled={!item.isAvailable}
+            className={`rounded-full transition-all duration-200 ${
+              showSuccess 
+                ? 'bg-green-500 text-white hover:bg-green-600' 
+                : 'bg-primary text-white hover:bg-orange-600'
+            }`}
+            onClick={handleAddToCart}
+            disabled={!item.isAvailable || isAdding}
           >
-            {item.isAvailable ? (compact ? "Add" : "Add to Cart") : "Out of Stock"}
+            {isAdding ? (
+              <div className="flex items-center gap-1">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                {compact ? "Adding..." : "Adding..."}
+              </div>
+            ) : showSuccess ? (
+              <div className="flex items-center gap-1">
+                <Check className="w-4 h-4" />
+                {compact ? "Added!" : "Added!"}
+              </div>
+            ) : (
+              item.isAvailable ? (compact ? "Add" : "Add to Cart") : "Out of Stock"
+            )}
           </Button>
         </div>
       </CardContent>

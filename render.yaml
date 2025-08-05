@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: snacktracker-backend
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+    healthCheckPath: /api/health
+
+  - type: web
+    name: snacktracker-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://snacktracker-backend.onrender.com
+
+databases:
+  - name: snacktracker-db
+    databaseName: snacktracker
+    user: snacktracker 

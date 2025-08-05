@@ -83,6 +83,8 @@ export default function AuthPage() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-4 lg:p-12 bg-white">
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
+            <div className="flex justify-center mb-4">
+            </div>
             <h1 className="text-3xl font-poppins font-bold text-primary mb-2">SnackTrack</h1>
             <p className="text-neutral-400">Your smart digital canteen management system</p>
           </div>

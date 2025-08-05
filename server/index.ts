@@ -3,7 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import * as dotenv from "dotenv";
 import cors from "cors";
-import { sessionConfig } from "./storage";
+
 
 // Initialize environment variables
 dotenv.config();
@@ -11,11 +11,19 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 
+// CORS configuration for session cookies
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? [process.env.FRONTEND_URL || 'https://snacktracker.vercel.app'] 
+    : ['http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
 // Middleware
-app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(sessionConfig); // Only use this one session middleware
 
 app.use((req, res, next) => {
   const start = Date.now();

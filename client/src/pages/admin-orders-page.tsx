@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "@/components/header";
 import MobileNav from "@/components/mobile-nav";
 import { useQuery } from "@tanstack/react-query";
@@ -22,15 +22,18 @@ export default function AdminOrdersPage() {
   const [dateFilter, setDateFilter] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedOrder, setSelectedOrder] = useState<OrderWithItems | null>(null);
+  const [lastOrderCount, setLastOrderCount] = useState<number>(0);
   const { toast } = useToast();
 
-  // Fetch active orders
+  // Fetch active orders with real-time updates
   const { 
     data: activeOrders,
     isLoading: isLoadingActive
   } = useQuery<OrderWithItems[]>({
     queryKey: ["/api/admin/orders/active"],
     enabled: isAdmin,
+    refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
+    refetchIntervalInBackground: true,
   });
 
   // Fetch order history
@@ -40,6 +43,8 @@ export default function AdminOrdersPage() {
   } = useQuery<OrderWithItems[]>({
     queryKey: ["/api/admin/orders/history"],
     enabled: isAdmin,
+    refetchInterval: 10000, // Refresh every 10 seconds
+    refetchIntervalInBackground: true,
   });
 
   // Mutation to update order status
@@ -47,12 +52,18 @@ export default function AdminOrdersPage() {
     mutationFn: async ({ orderId, status }: { orderId: number, status: string }) => {
       await apiRequest("POST", `/api/admin/orders/${orderId}/status`, { status });
     },
-    onSuccess: () => {
+    onSuccess: (_, { status }) => {
+      // Invalidate admin queries
       queryClient.invalidateQueries({ queryKey: ["/api/admin/orders/active"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/orders/history"] });
+      
+      // Invalidate customer queries for real-time updates
+      queryClient.invalidateQueries({ queryKey: ["/api/orders/active"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders/history"] });
+      
       toast({
         title: "Status updated",
-        description: "Order status has been successfully updated.",
+        description: `Order status has been updated to "${status}". Customer will be notified.`,
       });
     },
     onError: (error) => {
@@ -65,6 +76,18 @@ export default function AdminOrdersPage() {
   });
 
   const isLoading = isLoadingActive || isLoadingHistory;
+
+  // Check for new orders and show notifications
+  useEffect(() => {
+    if (activeOrders && activeOrders.length > lastOrderCount && lastOrderCount > 0) {
+      const newOrdersCount = activeOrders.length - lastOrderCount;
+      toast({
+        title: "New Order(s) Received!",
+        description: `${newOrdersCount} new order(s) have been placed and are waiting for your attention.`,
+      });
+    }
+    setLastOrderCount(activeOrders?.length || 0);
+  }, [activeOrders, lastOrderCount, toast]);
 
   const filteredActiveOrders = activeOrders
     ? activeOrders.filter(order => {
@@ -113,6 +136,85 @@ export default function AdminOrdersPage() {
             >
               Menu Items
             </Button>
+            <Button 
+              variant="outline"
+              className="py-2 px-4 text-sm font-medium rounded-md"
+              onClick={() => window.location.href = "/test"}
+            >
+              Test Dashboard
+            </Button>
+            <Button 
+              variant="outline"
+              className="py-2 px-4 text-sm font-medium rounded-md"
+              onClick={() => {
+                queryClient.invalidateQueries({ queryKey: ["/api/admin/orders/active"] });
+                queryClient.invalidateQueries({ queryKey: ["/api/admin/orders/history"] });
+                toast({
+                  title: "Refreshed",
+                  description: "Orders have been refreshed.",
+                });
+              }}
+            >
+              <i className="ri-refresh-line mr-2"></i>
+              Refresh
+            </Button>
+          </div>
+        </div>
+        
+        {/* Order Summary Dashboard */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white p-4 rounded-lg shadow-md">
+            <div className="flex items-center">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <i className="ri-file-list-3-line text-blue-600 text-xl"></i>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-neutral-500">Total Active</p>
+                <p className="text-2xl font-bold text-neutral-700">{activeOrders?.length || 0}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white p-4 rounded-lg shadow-md">
+            <div className="flex items-center">
+              <div className="p-2 bg-yellow-100 rounded-lg">
+                <i className="ri-time-line text-yellow-600 text-xl"></i>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-neutral-500">Received</p>
+                <p className="text-2xl font-bold text-neutral-700">
+                  {activeOrders?.filter(order => order.status === 'received').length || 0}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white p-4 rounded-lg shadow-md">
+            <div className="flex items-center">
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <i className="ri-fire-line text-orange-600 text-xl"></i>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-neutral-500">Preparing</p>
+                <p className="text-2xl font-bold text-neutral-700">
+                  {activeOrders?.filter(order => order.status === 'preparing').length || 0}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white p-4 rounded-lg shadow-md">
+            <div className="flex items-center">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <i className="ri-check-line text-green-600 text-xl"></i>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-neutral-500">Ready</p>
+                <p className="text-2xl font-bold text-neutral-700">
+                  {activeOrders?.filter(order => order.status === 'ready').length || 0}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
         

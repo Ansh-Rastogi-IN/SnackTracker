@@ -132,6 +132,13 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
+    // Validate request body
+    if (!req.body.username || !req.body.password) {
+      return res.status(400).json({ 
+        message: "Username and password are required" 
+      });
+    }
+
     passport.authenticate("local", (err, user, info) => {
       if (err) {
         console.error('Authentication error:', err);
@@ -157,14 +164,41 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/logout", (req, res, next) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
     req.logout((err) => {
-      if (err) return next(err);
-      res.sendStatus(200);
+      if (err) {
+        console.error('Logout error:', err);
+        return res.status(500).json({ message: "Logout failed" });
+      }
+      
+      // Destroy the session
+      req.session.destroy((err) => {
+        if (err) {
+          console.error('Session destruction error:', err);
+          return res.status(500).json({ message: "Logout failed" });
+        }
+        
+        res.clearCookie('connect.sid');
+        res.status(200).json({ message: "Logged out successfully" });
+      });
     });
   });
 
   app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     res.json(req.user);
+  });
+
+  // Session health check endpoint
+  app.get("/api/session-status", (req, res) => {
+    res.json({
+      isAuthenticated: req.isAuthenticated(),
+      sessionId: req.sessionID,
+      user: req.user ? { id: req.user.id, username: req.user.username, role: req.user.role } : null,
+      sessionStore: storage.sessionStore ? 'MemoryStore' : 'None'
+    });
   });
 }

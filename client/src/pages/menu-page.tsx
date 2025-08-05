@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Header from "@/components/header";
 import MobileNav from "@/components/mobile-nav";
 import CategoryFilter from "@/components/category-filter";
@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
+import { useCart } from "@/contexts/cart-context";
 
 export type CartItem = {
   id: number;
@@ -28,9 +29,11 @@ export type CartItem = {
 export default function MenuPage() {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedCanteenId, setSelectedCanteenId] = useState<string>("1"); // Default to first canteen
   const { toast } = useToast();
+  
+  // Use global cart context
+  const { cartItems, addToCart, updateQuantity, removeFromCart, clearCart, getCartItemsCount } = useCart();
 
   // Fetch all canteens
   const { data: canteens, isLoading: canteensLoading } = useQuery<Canteen[]>({
@@ -51,55 +54,39 @@ export default function MenuPage() {
   // Get selected canteen details
   const selectedCanteen = canteens?.find(c => c.id === parseInt(selectedCanteenId));
 
-  const addToCart = (item: MenuItem) => {
-    setCartItems((prevItems) => {
-      const existingItem = prevItems.find((cartItem) => cartItem.id === item.id);
-      
-      if (existingItem) {
-        // Increase quantity if item already exists
-        return prevItems.map((cartItem) => 
-          cartItem.id === item.id 
-            ? { ...cartItem, quantity: cartItem.quantity + 1 } 
-            : cartItem
-        );
-      } else {
-        // Add new item with quantity 1
-        return [...prevItems, { 
-          id: item.id, 
-          name: item.name, 
-          price: item.price, 
-          quantity: 1, 
-          category: item.category 
-        }];
-      }
-    });
+  // Enhanced addToCart function with validation and toast notifications
+  const handleAddToCart = useCallback((item: MenuItem) => {
+    // Validate item before adding to cart
+    if (!item || !item.id || !item.name || !item.price) {
+      toast({
+        title: "Error",
+        description: "Invalid item. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if item is available
+    if (!item.isAvailable) {
+      toast({
+        title: "Item unavailable",
+        description: `${item.name} is currently out of stock.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Add to cart using global context
+    addToCart(item);
     
+    // Show success message
     toast({
       title: "Added to cart",
       description: `${item.name} has been added to your cart.`,
     });
-  };
+  }, [addToCart, toast]);
 
-  const updateQuantity = (id: number, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(id);
-      return;
-    }
-    
-    setCartItems((prevItems) => 
-      prevItems.map((item) => 
-        item.id === id ? { ...item, quantity } : item
-      )
-    );
-  };
 
-  const removeFromCart = (id: number) => {
-    setCartItems((prevItems) => prevItems.filter((item) => item.id !== id));
-  };
-
-  const clearCart = () => {
-    setCartItems([]);
-  };
 
   const filterMenuItems = (items: MenuItem[] | undefined, category: string) => {
     if (!items) return [];
@@ -118,7 +105,7 @@ export default function MenuPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header 
-        cartItemsCount={cartItems.length} 
+        cartItemsCount={getCartItemsCount()} 
         onCartClick={() => setIsCartOpen(true)} 
       />
       
@@ -187,6 +174,8 @@ export default function MenuPage() {
           onCategoryChange={setActiveCategory} 
         />
         
+
+        
         {canteensLoading || menuItemsLoading ? (
           <div className="flex justify-center items-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -201,7 +190,7 @@ export default function MenuPage() {
                   <MenuCard 
                     key={item.id}
                     item={item}
-                    onAddToCart={() => addToCart(item)}
+                    onAddToCart={() => handleAddToCart(item)}
                   />
                 ))}
               </div>
@@ -216,7 +205,7 @@ export default function MenuPage() {
                     <MenuCard 
                       key={item.id}
                       item={item}
-                      onAddToCart={() => addToCart(item)}
+                      onAddToCart={() => handleAddToCart(item)}
                       compact
                     />
                   ))}
@@ -231,7 +220,7 @@ export default function MenuPage() {
         )}
       </main>
       
-      <MobileNav activeView="menu" cartItemsCount={cartItems.length} onCartClick={() => setIsCartOpen(true)} />
+      <MobileNav activeView="menu" cartItemsCount={getCartItemsCount()} onCartClick={() => setIsCartOpen(true)} />
       
       <CartPanel 
         isOpen={isCartOpen}
