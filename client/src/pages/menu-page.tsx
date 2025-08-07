@@ -44,7 +44,7 @@ export default function MenuPage() {
   const { data: menuItems, isLoading: menuItemsLoading } = useQuery<MenuItem[]>({
     queryKey: ["/api/canteens", selectedCanteenId, "menu-items"],
     queryFn: async () => {
-      const res = await fetch(`/api/canteens/${selectedCanteenId}/menu-items`);
+      const res = await fetch(`/api/menu-items?canteenId=${selectedCanteenId}`);
       if (!res.ok) throw new Error("Failed to fetch menu items");
       return res.json();
     },

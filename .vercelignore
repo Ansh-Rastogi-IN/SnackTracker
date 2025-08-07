@@ -1,6 +1,0 @@
-server/
-migrations/
-scripts/
-*.md
-.env
-.env.local 

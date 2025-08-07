@@ -30,7 +30,7 @@ const menuItemFormSchema = insertMenuItemSchema.extend({
 type MenuItemFormData = z.infer<typeof menuItemFormSchema>;
 
 export default function AdminMenuPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState<boolean>(false);
@@ -38,6 +38,9 @@ export default function AdminMenuPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
   const [selectedMenuItem, setSelectedMenuItem] = useState<MenuItem | null>(null);
   const { toast } = useToast();
+
+  // Debug logging
+  console.log("AdminMenuPage - isAdmin:", isAdmin, "user:", user);
 
   const form = useForm<MenuItemFormData>({
     resolver: zodResolver(menuItemFormSchema),
@@ -51,13 +54,20 @@ export default function AdminMenuPage() {
     },
   });
 
-  // Fetch menu items
+  // Fetch menu items - use the same endpoint as public menu for consistency
   const { 
     data: menuItems,
     isLoading 
   } = useQuery<MenuItem[]>({
-    queryKey: ["/api/admin/menu-items"],
-    enabled: isAdmin,
+    queryKey: ["/api/menu-items"],
+    queryFn: async () => {
+      const res = await fetch("/api/menu-items");
+      if (!res.ok) throw new Error("Failed to fetch menu items");
+      const data = await res.json();
+      console.log("Fetched menu items from API:", data);
+      return data;
+    },
+    // enabled: isAdmin, // Temporarily disabled for debugging
   });
 
   // Mutation to create menu item
@@ -67,7 +77,7 @@ export default function AdminMenuPage() {
       return await res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/menu-items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/menu-items"] });
       toast({
         title: "Menu item created",
         description: "The menu item has been successfully created.",
@@ -92,7 +102,7 @@ export default function AdminMenuPage() {
       return await res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/menu-items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/menu-items"] });
       toast({
         title: "Menu item updated",
         description: "The menu item has been successfully updated.",
@@ -114,7 +124,7 @@ export default function AdminMenuPage() {
       await apiRequest("DELETE", `/api/admin/menu-items/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/menu-items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/menu-items"] });
       toast({
         title: "Menu item deleted",
         description: "The menu item has been successfully deleted.",
@@ -137,7 +147,7 @@ export default function AdminMenuPage() {
       await apiRequest("PATCH", `/api/admin/menu-items/${id}`, { isAvailable });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/menu-items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/menu-items"] });
       toast({
         title: "Availability updated",
         description: "The menu item availability has been updated.",
@@ -151,6 +161,9 @@ export default function AdminMenuPage() {
       });
     },
   });
+
+  // Debug logging for menu items
+  console.log("AdminMenuPage - menuItems:", menuItems, "isLoading:", isLoading);
 
   const filteredMenuItems = menuItems
     ? menuItems.filter(item => {

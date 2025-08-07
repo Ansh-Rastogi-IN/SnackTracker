@@ -198,7 +198,7 @@ export class MemStorage implements IStorage {
 
     // Initialize default users with properly hashed passwords
     this.initializeDefaultUsers();
-    // this.initializeDefaultMenuItems(); // Disabled to prevent default items from being re-added
+    // Menu items are initialized within initializeDefaultCanteens()
   }
 
   // ======== User Methods ========

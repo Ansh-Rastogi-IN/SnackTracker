@@ -1,19 +1,20 @@
-import { pgTable, text, serial, integer, boolean, timestamp, pgEnum, varchar } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer, boolean } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// User role enum
-export const userRoleEnum = pgEnum("user_role", ["customer", "staff", "admin"]);
+// User role enum - using text with check constraint for SQLite
+export const userRoleEnum = text("role", { enum: ["customer", "staff", "admin"] });
 
 // User schema
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  username: varchar("username", { length: 255 }).notNull().unique(),
-  password: varchar("password", { length: 255 }).notNull(),
+export const users = sqliteTable("users", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
   firstName: text("first_name"),
   lastName: text("last_name"),
-  role: userRoleEnum("role").default("customer").notNull(),
-  isAdmin: boolean("is_admin").default(false).notNull(), // Keep for backwards compatibility
+  role: userRoleEnum.default("customer").notNull(),
+  isAdmin: integer("is_admin", { mode: "boolean" }).default(false).notNull(), // Keep for backwards compatibility
   canteenId: integer("canteen_id"), // For staff members, associated canteen
   profileImage: text("profile_image"),
   contactNumber: text("contact_number"),
@@ -32,13 +33,13 @@ export const insertUserSchema = createInsertSchema(users).pick({
 });
 
 // Canteen schema
-export const canteens = pgTable("canteens", {
-  id: serial("id").primaryKey(),
+export const canteens = sqliteTable("canteens", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   location: text("location").notNull(),
   description: text("description"),
   imageUrl: text("image_url"),
-  isActive: boolean("is_active").default(true).notNull(),
+  isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
 });
 
 export const insertCanteenSchema = createInsertSchema(canteens).pick({
@@ -49,18 +50,18 @@ export const insertCanteenSchema = createInsertSchema(canteens).pick({
   isActive: true,
 });
 
-// Category enum
-export const categoryEnum = pgEnum("category", ["veg", "nonveg", "snacks", "beverages"]);
+// Category enum - using text with check constraint for SQLite
+export const categoryEnum = text("category", { enum: ["veg", "nonveg", "snacks", "beverages"] });
 
 // Menu item schema
-export const menuItems = pgTable("menu_items", {
-  id: serial("id").primaryKey(),
+export const menuItems = sqliteTable("menu_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   description: text("description"),
   price: integer("price").notNull(),
   imageUrl: text("image_url"),
-  category: categoryEnum("category").notNull(),
-  isAvailable: boolean("is_available").default(true).notNull(),
+  category: categoryEnum.notNull(),
+  isAvailable: integer("is_available", { mode: "boolean" }).default(true).notNull(),
   canteenId: integer("canteen_id").default(1).notNull(), // Default to first canteen
 });
 
@@ -74,16 +75,16 @@ export const insertMenuItemSchema = createInsertSchema(menuItems).pick({
   canteenId: true,
 });
 
-// Order status enum
-export const orderStatusEnum = pgEnum("order_status", ["received", "preparing", "ready", "completed", "cancelled"]);
+// Order status enum - using text with check constraint for SQLite
+export const orderStatusEnum = text("status", { enum: ["received", "preparing", "ready", "completed", "cancelled"] });
 
 // Order schema
-export const orders = pgTable("orders", {
-  id: serial("id").primaryKey(),
+export const orders = sqliteTable("orders", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   userId: integer("user_id").notNull(),
-  status: orderStatusEnum("status").default("received").notNull(),
+  status: orderStatusEnum.default("received").notNull(),
   totalAmount: integer("total_amount").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).default(sql`(strftime('%s', 'now'))`),
 });
 
 export const insertOrderSchema = createInsertSchema(orders).pick({
@@ -93,8 +94,8 @@ export const insertOrderSchema = createInsertSchema(orders).pick({
 });
 
 // Order item schema
-export const orderItems = pgTable("order_items", {
-  id: serial("id").primaryKey(),
+export const orderItems = sqliteTable("order_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   orderId: integer("order_id").notNull(),
   menuItemId: integer("menu_item_id").notNull(),
   quantity: integer("quantity").notNull(),
@@ -134,15 +135,15 @@ export type CartItem = {
 };
 
 // Inventory item schema
-export const inventoryItems = pgTable("inventory_items", {
-  id: serial("id").primaryKey(),
+export const inventoryItems = sqliteTable("inventory_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   quantity: integer("quantity").notNull().default(0),
   unit: text("unit").notNull(), // e.g., kg, liters, pieces
   costPerUnit: integer("cost_per_unit").notNull(),
   canteenId: integer("canteen_id").notNull(),
   reorderLevel: integer("reorder_level").default(10).notNull(),
-  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+  lastUpdated: integer("last_updated", { mode: "timestamp" }).default(sql`(strftime('%s', 'now'))`),
   updatedBy: integer("updated_by").notNull(), // staff member who last updated
 });
 
@@ -157,12 +158,12 @@ export const insertInventoryItemSchema = createInsertSchema(inventoryItems).pick
 });
 
 // Expense tracking
-export const expenses = pgTable("expenses", {
-  id: serial("id").primaryKey(),
+export const expenses = sqliteTable("expenses", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   description: text("description").notNull(),
   amount: integer("amount").notNull(),
   canteenId: integer("canteen_id").notNull(),
-  date: timestamp("date").defaultNow().notNull(),
+  date: integer("date", { mode: "timestamp" }).default(sql`(strftime('%s', 'now'))`),
   category: text("category").notNull(), // e.g., utilities, maintenance, supplies
   recordedBy: integer("recorded_by").notNull(),
 });
@@ -177,10 +178,10 @@ export const insertExpenseSchema = createInsertSchema(expenses).pick({
 });
 
 // Daily sales report
-export const salesReports = pgTable("sales_reports", {
-  id: serial("id").primaryKey(),
+export const salesReports = sqliteTable("sales_reports", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   canteenId: integer("canteen_id").notNull(),
-  date: timestamp("date").defaultNow().notNull(),
+  date: integer("date", { mode: "timestamp" }).default(sql`(strftime('%s', 'now'))`),
   totalSales: integer("total_sales").notNull(),
   totalOrders: integer("total_orders").notNull(),
   cashSales: integer("cash_sales").notNull().default(0),
@@ -209,13 +210,13 @@ export type SalesReport = typeof salesReports.$inferSelect;
 export type InsertSalesReport = z.infer<typeof insertSalesReportSchema>;
 
 // Order ratings schema
-export const orderRatings = pgTable("order_ratings", {
-  id: serial("id").primaryKey(),
+export const orderRatings = sqliteTable("order_ratings", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   orderId: integer("order_id").notNull(),
   userId: integer("user_id").notNull(),
   rating: integer("rating").notNull(), // 1-5 stars
   comment: text("comment"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).default(sql`(strftime('%s', 'now'))`),
 });
 
 export const insertOrderRatingSchema = createInsertSchema(orderRatings).pick({

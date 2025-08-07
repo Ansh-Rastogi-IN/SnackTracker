@@ -14,7 +14,7 @@ const port = process.env.PORT || 3000;
 // CORS configuration for session cookies
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL || 'https://snacktracker.vercel.app'] 
+    ? ['https://yourdomain.com'] 
     : ['http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],

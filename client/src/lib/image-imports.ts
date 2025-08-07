@@ -8,9 +8,17 @@ import paneerPuffImg from '../assets/images/paneer puff.webp';
 import masalaDosaImg from '../assets/images/masala dosa.webp';
 
 // Export image mapping
-export const localFoodImages: Record<string, string> = {};
+export const localFoodImages: Record<string, string> = {
+  // The keys must match the menu item names from the backend exactly!
+  "Veg Burger": burgerImg,
+  "Cheese Maggi": cheeseMaggieImg,
+  "Paneer Puff": paneerPuffImg,
+  "Masala Dosa": masalaDosaImg,
+};
 
 // Function to get local image URL
 export function getLocalFoodImage(itemName: string): string | null {
   return localFoodImages[itemName] || null;
-} 
+}
+
+export { burgerImg }; 

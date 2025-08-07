@@ -10,9 +10,6 @@ import { User as SelectUser } from "@shared/schema";
 declare global {
   namespace Express {
     interface User extends SelectUser {}
-    interface Request {
-      user?: User;
-    }
   }
 }
 
@@ -38,7 +35,7 @@ export function requireRole(role: string) {
       return res.status(401).json({ message: "Authentication required" });
     }
     
-    if (!req.user || (req.user.role !== role && req.user.role !== "admin")) {
+    if (req.user.role !== role && req.user.role !== "admin") {
       return res.status(403).json({ message: "Access denied" });
     }
     

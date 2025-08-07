@@ -1,8 +1,10 @@
 // Food images configuration for the prototype
 // Using local photos from assets/images folder
-import { getLocalFoodImage } from './image-imports';
+import { getLocalFoodImage, burgerImg } from './image-imports';
 
-export const foodImages: Record<string, string> = {};
+export const foodImages: Record<string, string> = {
+  default: burgerImg,
+};
 
 // Function to get image URL for a menu item
 export function getFoodImage(itemName: string, category?: string): string {
